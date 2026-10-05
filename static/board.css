@@ -1,0 +1,147 @@
+:root {
+  --bg: #f4f2ee;
+  --panel: #ffffff;
+  --ink: #1d1d1f;
+  --muted: #6b6b70;
+  --line: #dedad3;
+  --team0: #1f6f78;
+  --team0-soft: #e2f0f1;
+  --team1: #a2482a;
+  --team1-soft: #f6e6df;
+  --reach: #a87400;
+  --reach-soft: #ffdd7a;
+  --lock: #55555c;
+  --lock-soft: #e6e5e3;
+  --ok: #2f7d3b;
+  --ng: #b3261e;
+  --radius: 14px;
+  --radius-s: 10px;
+  --radius-xs: 6px;
+  --f-body: "Noto Sans JP", system-ui, -apple-system, "Hiragino Sans", sans-serif;
+  --f-num: var(--f-body);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="sm"]) {
+    --bg: #151517; --panel: #1f1f22; --ink: #f2f1ee; --muted: #a3a2a8; --line: #34343a;
+    --team0: #5fb8c2; --team0-soft: #1b3336; --team1: #e08a69; --team1-soft: #3a241c;
+    --reach: #f0bd3a; --reach-soft: #5c4a12; --lock: #b5b4ba; --lock-soft: #2c2c31;
+    --ok: #6cc47a; --ng: #f2827a; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #151517; --panel: #1f1f22; --ink: #f2f1ee; --muted: #a3a2a8; --line: #34343a;
+  --team0: #5fb8c2; --team0-soft: #1b3336; --team1: #e08a69; --team1-soft: #3a241c;
+  --reach: #f0bd3a; --reach-soft: #5c4a12; --lock: #b5b4ba; --lock-soft: #2c2c31;
+  --ok: #6cc47a; --ng: #f2827a; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: var(--f-body);
+  -webkit-text-size-adjust: 100%;
+}
+.wrap { max-width: 1100px; margin: 0 auto; padding: 16px; }
+header.bar { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+header.bar h1 { font-size: 15px; font-weight: 600; margin: 0; color: var(--muted); letter-spacing: .04em; }
+.qcount { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 15px; color: var(--muted); }
+.qcount b { color: var(--ink); font-size: 22px; }
+[hidden] { display: none !important; }
+.banner { display: none; margin-bottom: 12px; padding: 12px 16px; border-radius: var(--radius); background: var(--ink); color: var(--bg); font-weight: 700; text-align: center; font-size: 18px; }
+.banner.show { display: block; }
+.teams { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 720px) { .teams { grid-template-columns: 1fr; } }
+.team { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; border-top: 6px solid var(--tc); }
+.team[data-i="0"] { --tc: var(--team0); --ts: var(--team0-soft); }
+.team[data-i="1"] { --tc: var(--team1); --ts: var(--team1-soft); }
+.team.win { box-shadow: 0 0 0 3px var(--tc); }
+.thead { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.tname { font-size: 20px; font-weight: 700; overflow-wrap: anywhere; }
+.tscore { font-family: var(--f-num); font-size: 56px; font-weight: 800; color: var(--tc); font-variant-numeric: tabular-nums; line-height: 1; }
+.tscore small { font-size: 16px; font-weight: 600; color: var(--muted); margin-left: 2px; }
+.tscore small.target { font-size: 24px; font-weight: 700; margin-left: 1px; white-space: nowrap; }
+.tscore { white-space: nowrap; }
+.seats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.slot { min-width: 0; }
+.slot > .no { font-family: var(--f-num); text-align: center; font-size: 13px; font-weight: 700; color: var(--tc); margin-bottom: 3px; font-variant-numeric: tabular-nums; }
+.seat .pnames { display: flex; flex-direction: column; justify-content: center; gap: 1px; height: calc(2.7em + 1px); margin-bottom: 2px; font-size: 13px; font-weight: 600; line-height: 1.35; white-space: nowrap; overflow: hidden; }
+.seat .pnames span { display: block; }
+.seat .pnames i { display: inline-block; font-style: normal; transform-origin: left center; }
+@media (max-width: 420px) { .seat .pnames { font-size: 11px; letter-spacing: -.02em; } }
+.seat { position: relative; border: 1px solid var(--line); border-radius: var(--radius-s); padding: 8px 4px 10px; text-align: center; background: var(--panel); }
+.seat .pt { font-family: var(--f-num); font-size: 34px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.seat .x { height: 18px; font-size: 15px; font-weight: 800; color: var(--ng); letter-spacing: .1em; }
+.seat.reach { background: var(--reach-soft); border-color: var(--reach); box-shadow: inset 0 0 0 2px var(--reach); }
+.seat.locked { background: repeating-linear-gradient(135deg, var(--lock-soft) 0 8px, var(--panel) 8px 16px); border-color: var(--lock); }
+.seat.locked .pt { color: var(--lock); }
+.seat.flash { animation: flash .9s ease-out; }
+@keyframes flash { from { box-shadow: 0 0 0 4px var(--tc); } to { box-shadow: 0 0 0 0 transparent; } }
+.log { margin-top: 16px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 14px; }
+.log h2 { font-size: 13px; color: var(--muted); margin: 0 0 6px; font-weight: 600; }
+.log ol { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.log li { font-size: 13px; padding: 2px 8px; border-radius: var(--radius-xs); background: var(--bg); font-variant-numeric: tabular-nums; }
+.log li .ok { color: var(--ok); font-weight: 700; }
+.log li .ng { color: var(--ng); font-weight: 700; }
+.foot { margin-top: 10px; font-size: 12px; color: var(--muted); text-align: right; }
+.foot.stale { color: var(--ng); }
+header.bar h1.has-title { font-size: 19px; font-weight: 700; color: var(--ink); letter-spacing: 0; overflow-wrap: anywhere; }
+
+/* ===== SportsManiax モード（SportsManiaxDataAnalysis のレポートのトンマナ） =====
+   黒地・角なし・赤の見出しと黒文字の赤帯・水色の枠・黄色の強調・縦長の数字フォント */
+:root[data-theme="sm"] {
+  --bg: #000; --panel: #0d0d0d; --ink: #fff; --muted: #8a8984; --line: #2a2a2a;
+  --brand-red: #dc1e22; --title-red: #e8262c; --cyan: #22d3dd; --yellow: #ffd21f;
+  --team0: var(--cyan); --team0-soft: #0b2a2c; --team1: var(--title-red); --team1-soft: #2c0b0c;
+  --reach: var(--yellow); --reach-soft: #4a3d00; --lock: #8a8984; --lock-soft: #1a1a1a;
+  --ok: var(--cyan); --ng: #ff7b7b;
+  --radius: 0; --radius-s: 0; --radius-xs: 0;
+  --f-body: "BIZ UDPGothic", "BIZ UDPゴシック", sans-serif;
+  --f-num: "Agency FB", "Saira Extra Condensed", "Arial Narrow", "BIZ UDPGothic", sans-serif;
+  color-scheme: dark;
+}
+:root[data-theme="sm"] header.bar h1 { color: var(--title-red); font-weight: 700; font-size: 22px; letter-spacing: 0; }
+:root[data-theme="sm"] header.bar .qcount b { font-size: 28px; }
+@media (max-width: 480px) {
+  :root[data-theme="sm"] header.bar h1 { font-size: 18px; }
+  :root[data-theme="sm"] header.bar .qcount b { font-size: 24px; }
+}
+:root[data-theme="sm"] .banner { background: var(--brand-red); color: #000; }
+:root[data-theme="sm"] .team { border: 2px solid var(--tc); border-top-width: 6px; }
+:root[data-theme="sm"] .tscore { font-weight: 700; font-size: 64px; }
+:root[data-theme="sm"] .tscore small { font-family: var(--f-body); }
+:root[data-theme="sm"] .tscore small.target { font-family: var(--f-num); font-size: 30px; }
+:root[data-theme="sm"] .seat .pt { font-weight: 700; font-size: 42px; line-height: 1.05; }
+:root[data-theme="sm"] .slot > .no { font-size: 17px; }
+:root[data-theme="sm"] .log h2 { color: var(--ink); font-size: 14px; border-left: 4px solid var(--brand-red); padding-left: 8px; }
+:root[data-theme="sm"] .log li { background: #1a1a1a; }
+
+/* 表示モードの切り替え（端末ごと） */
+.theme { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.theme select { font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-xs); padding: 2px 4px; }
+.lname { display: inline-block; max-width: 8em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
+
+/* 画像をコピー（閲覧画面） */
+#shotmsg.error { color: var(--ng); }
+
+/* 閲覧画面の下部：お知らせ・更新時刻 */
+.vfoot { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-top: 10px; font-size: 12px; color: var(--muted); }
+.vfoot .foot { margin: 0; }
+.menu { position: relative; }
+/* 右上のハンバーガーメニュー */
+header.bar:has(.hright) { align-items: center; }
+header.bar .hright { display: flex; align-items: center; gap: 12px; }
+.menu summary { list-style: none; cursor: pointer; display: grid; place-items: center; width: 36px; height: 32px; font-size: 18px; line-height: 1; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-xs); user-select: none; }
+.menu summary::-webkit-details-marker { display: none; }
+.menu[open] summary { border-color: var(--ink); }
+.menu-panel { position: absolute; right: 0; top: calc(100% + 6px); z-index: 10; width: max-content; max-width: calc(100vw - 32px);
+  display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; font-size: 14px; color: var(--ink); text-align: left;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-s); box-shadow: 0 6px 24px rgba(0, 0, 0, .18); }
+.menu-panel hr { width: 100%; border: 0; border-top: 1px solid var(--line); margin: 2px 0; }
+.menu-panel label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.menu-panel button { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-xs); padding: 6px 12px; cursor: pointer; text-align: center; }
+.menu-panel button:disabled { opacity: .5; cursor: wait; }
+.menu-panel .theme { font-size: 14px; color: var(--ink); gap: 8px; }
+.menu-panel .theme select { font-size: 14px; padding: 2px 6px; }
+.menu-panel .note { font-size: 11px; color: var(--muted); }
+/* 画像用に組み立てる要素は画面の外に置く */
+.shot-stage { position: fixed; left: -100000px; top: 0; }

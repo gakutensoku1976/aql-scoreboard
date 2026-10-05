@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>AQL 正誤入力</title>
+<link rel="icon" href="data:,">
+<script>try{var t=localStorage.getItem("aql-scoreboard-theme");if(t)document.documentElement.dataset.theme=t;}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" crossorigin="anonymous" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Saira+Extra+Condensed:wght@500;700&display=swap">
+<link rel="stylesheet" href="static/board.css">
+<link rel="stylesheet" href="static/input.css">
+</head>
+<body>
+<main class="wrap" id="root">
+  <header class="bar"><h1><span class="htitle">AQL 正誤入力</span><span class="mode">出題者用</span></h1><div class="qcount"></div></header>
+  <div class="banner"></div>
+  <div class="teams"></div>
+  <div class="footrow"><span id="shotmsg" role="status"></span><div class="foot"></div></div>
+  <div class="ops">
+    <button id="through">スルー（正解者なし）</button>
+    <button id="undo">1つ取り消す</button>
+    <span class="ops-right">
+      <a id="export" class="btn" download>試合記録をダウンロード（JSON）</a>
+      <button id="shot" type="button">画像をコピー</button>
+      <button id="reset" class="danger">試合をリセット</button>
+    </span>
+  </div>
+  <section class="log"><h2>判定の記録（新しい順）</h2><ol></ol></section>
+  <details class="roster fold" id="roster">
+    <summary><span class="ftitle">参加者名を編集</span><span class="fstate">1枠2名まで・全角6文字まで</span></summary>
+    <div class="rt" data-t="0"></div>
+    <div class="rt" data-t="1"></div>
+  </details>
+  <details class="fold" id="fold-names">
+  <summary><span class="ftitle">試合名・チーム名</span><span class="fstate" id="fs-names"></span></summary>
+  <div class="names">
+    <input id="title" class="wide" maxlength="40" placeholder="試合名（例：503会議室 第2試合）">
+    <input id="n0" maxlength="30" placeholder="チーム1の名前">
+    <input id="n1" maxlength="30" placeholder="チーム2の名前">
+    <button id="rename">試合名・チーム名を変更</button>
+  </div>
+  </details>
+  <details class="fold" id="fold-option">
+  <summary><span class="ftitle">オプションルール</span><span class="fstate" id="fs-option"></span></summary>
+  <div class="display option">
+    <label><input type="checkbox" id="custom_target"> 勝利点を変更する</label>
+    <div class="targets">
+      <label><span id="tl0">チーム1</span><input type="number" id="tg0" min="2" max="99999" step="1" inputmode="numeric"></label>
+      <label><span id="tl1">チーム2</span><input type="number" id="tg1" min="2" max="99999" step="1" inputmode="numeric"></label>
+      <button id="apply_targets">勝利点を適用</button>
+    </div>
+    <label class="qlimit"><input type="checkbox" id="no_question_limit"> <span id="qlimit_label">40問で終了しない</span></label>
+    <span class="note">「40問で終了しない」がONのとき、規定の問題数を終えても試合を終えず（無効になった問題の分を続けて出題するため）、問題数は「第n問」と表示します。<br>「勝利点を変更する」がONのとき、得点を「現在点/勝利点」で表示し、リーチもそれぞれの勝利点で判定します。試合の途中でも変更できますが、現在の得点以下の値にはできません。「1つ取り消す」で変更前に戻せます。</span>
+  </div>
+  </details>
+  <details class="fold" id="fold-display">
+  <summary><span class="ftitle">閲覧画面に表示する項目</span><span class="fstate" id="fs-display"></span></summary>
+  <div class="display">
+    <label><input type="checkbox" id="show_question"> 問題数</label>
+    <label><input type="checkbox" id="show_log"> 判定の記録</label>
+    <span class="note">OFFにした項目は、閲覧画面にもその通信内容にも含まれません（この入力画面には常に表示）。OFFのとき、判定の記録の問題番号も外れます。</span>
+  </div>
+  </details>
+  <details class="fold" id="fold-device">
+  <summary><span class="ftitle">この端末の入力画面</span><span class="fstate" id="fs-device"></span></summary>
+  <div class="display" id="device">
+    <label><input type="checkbox" data-layout="swap"> チームの左右を入れ替え</label>
+    <label><input type="checkbox" data-layout="rev0"> <span class="lname" data-t="0">チーム1</span>の枠を5→1</label>
+    <label><input type="checkbox" data-layout="rev1"> <span class="lname" data-t="1">チーム2</span>の枠を5→1</label>
+    <label class="theme">表示モード <select id="theme"><option value="light">ライト</option><option value="dark">ダーク</option><option value="sm">SportsManiax</option></select></label>
+    <span class="note">設定はこの端末だけに保存されます。表示モードは閲覧画面と共通、並び順はこの入力画面だけの設定です（閲覧画面には反映されません）。</span>
+  </div>
+  </details>
+</main>
+<div class="toast" id="toast"></div>
+<dialog id="resetdlg" aria-labelledby="resetdlg-title">
+  <h2 id="resetdlg-title">試合をリセットしますか？</h2>
+  <p>得点と判定の記録をすべて消して、試合を最初からにします。試合名・チーム名・参加者名・勝利点の設定は残ります。</p>
+  <div class="dlg-actions">
+    <button type="button" class="primary" data-choice="download">試合記録をダウンロードしてリセット</button>
+    <button type="button" class="danger" data-choice="reset">ダウンロードせずにリセット</button>
+    <button type="button" data-choice="cancel">キャンセル</button>
+  </div>
+</dialog>
+<script src="static/vendor/html-to-image-1.11.13.js"></script>
+<script src="static/board.js"></script>
+<script>
+  const root = document.getElementById("root");
+  const base = location.pathname.replace(/\/$/, "");
+  const actionUrl = base + "/api/action";
+  document.getElementById("export").href = base + "/api/export";
+  let current = null;
+
+  Board.bindTheme(document.getElementById("theme"));
+
+  // 閲覧画面と同じ範囲（見出し・勝敗・両チーム。判定の記録は含めない）を画像にする。
+  // 写す部分だけを画面外で組み立て、○×ボタンと「出題者用」は写さない
+  Board.bindShot(document.getElementById("shot"), document.getElementById("shotmsg"), () => Board.shotStage(root, ".jb, .mode"));
+  Board.bindLayout(document.getElementById("device"), "aql-scoreboard-layout-input");
+
+  const controls = (t, i, seat) => {
+    const off = seat.locked || (current && current.result) ? "disabled" : "";
+    return `<div class="jb"><button class="ok" data-a="correct" data-t="${t}" data-s="${i}" ${off} aria-label="${i + 1}枠 正解">○</button>` +
+      `<button class="ng" data-a="wrong" data-t="${t}" data-s="${i}" ${off} aria-label="${i + 1}枠 誤答">×</button></div>`;
+  };
+
+  // 全角2・半角1で数え、12（全角6文字）まで
+  const width = (n) => [...n].reduce((w, c) => w + (/[\u0000-\u00ff\uff61-\uff9f]/.test(c) ? 1 : 2), 0);
+  const dirty = [false, false];
+  function fillRoster(s) {
+    for (const t of [0, 1]) {
+      const box = document.querySelector(`.rt[data-t="${t}"]`);
+      if (dirty[t] || box.contains(document.activeElement)) continue; // 保存前の入力は上書きしない
+      box.innerHTML = `<h3>${Board.esc(s.teams[t].name)}</h3>` + s.teams[t].seats.map((seat, i) =>
+        `<div class="row"><b>${i + 1}</b>` + [0, 1].map((k) =>
+          `<input data-s="${i}" data-k="${k}" maxlength="12" placeholder="${k + 1}人目" value="${Board.esc((seat.players || [])[k] || "")}">`).join("") +
+        `</div>`).join("") + `<button data-save="${t}">${Board.esc(s.teams[t].name)} の参加者名を保存</button>`;
+    }
+  }
+  document.getElementById("roster").addEventListener("input", (e) => {
+    if (!e.target.matches("input")) return;
+    e.target.classList.toggle("over", width(e.target.value.trim()) > 12);
+    dirty[+e.target.closest(".rt").dataset.t] = true;
+  });
+  document.getElementById("roster").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-save]");
+    if (!b) return;
+    const t = +b.dataset.save;
+    const players = [0, 1, 2, 3, 4].map((i) => [0, 1].map((k) =>
+      document.querySelector(`.rt[data-t="${t}"] input[data-s="${i}"][data-k="${k}"]`).value));
+    b.blur();
+    dirty[t] = false;
+    send({ type: "roster", team: t, players }).then((ok) => { if (!ok) dirty[t] = true; });
+  });
+
+  const show = (s) => {
+    current = s;
+    Board.render(root, s, controls);
+    fillRoster(s);
+    document.getElementById("through").disabled = !!s.result;
+    for (const key of ["show_question", "show_log"]) document.getElementById(key).checked = s.display[key];
+    root.querySelector(".qcount").classList.toggle("off", !s.display.show_question);
+    root.querySelector(".log").classList.toggle("off", !s.display.show_log);
+    for (const i of [0, 1]) {
+      const el = document.getElementById("n" + i);
+      if (document.activeElement !== el) el.value = s.teams[i].name;
+    }
+    const title = document.getElementById("title");
+    if (document.activeElement !== title) title.value = s.title;
+    // 見出しとタブ名は閲覧画面と同じく試合名。未入力なら既定の「AQL 正誤入力」
+    const h1 = root.querySelector("h1");
+    h1.querySelector(".htitle").textContent = s.title || "AQL 正誤入力";
+    h1.classList.toggle("has-title", !!s.title);
+    document.title = s.title ? `${s.title} | AQL 正誤入力` : "AQL 正誤入力";
+    fillTargets(s);
+    fillFoldStates(s);
+    fillDeviceState();
+  };
+
+  // 畳んだ欄の見出しに今の設定を出す
+  function fillFoldStates(s) {
+    document.getElementById("fs-names").textContent = `${s.title || "試合名なし"}　${s.teams[0].name} 対 ${s.teams[1].name}`;
+    const opts = [s.custom_target ? `勝利点 ${s.teams[0].target} / ${s.teams[1].target}` : "勝利点 200"];
+    if (s.no_question_limit) opts.push(`${s.max_questions}問で終了しない`);
+    document.getElementById("fs-option").textContent = opts.join("　");
+    const onoff = (v) => (v ? "表示" : "非表示");
+    document.getElementById("fs-display").textContent = `問題数：${onoff(s.display.show_question)}　判定の記録：${onoff(s.display.show_log)}`;
+  }
+  function fillDeviceState() {
+    const theme = document.getElementById("theme");
+    const parts = [theme.options[theme.selectedIndex].text];
+    const dev = document.getElementById("device");
+    if (dev.querySelector('[data-layout="swap"]').checked) parts.push("左右入替");
+    for (const i of [0, 1]) if (dev.querySelector(`[data-layout="rev${i}"]`).checked) parts.push(`${dev.querySelector(`.lname[data-t="${i}"]`).textContent} 5→1`);
+    document.getElementById("fs-device").textContent = parts.join("　");
+  }
+  document.getElementById("device").addEventListener("change", fillDeviceState);
+  // 開閉の状態はこの端末に保存する（初期は畳む）
+  const FOLD_KEY = "aql-scoreboard-fold-input";
+  let folds = {};
+  try { folds = JSON.parse(localStorage.getItem(FOLD_KEY) || "{}"); } catch {}
+  for (const d of document.querySelectorAll("details.fold")) {
+    d.open = !!folds[d.id];
+    d.addEventListener("toggle", () => {
+      folds[d.id] = d.open;
+      try { localStorage.setItem(FOLD_KEY, JSON.stringify(folds)); } catch {}
+    });
+  }
+
+  // オプションルール（勝利点）。入力中・未適用の値は自動更新で上書きしない
+  let targetsDirty = false;
+  const customBox = document.getElementById("custom_target");
+  const targetInputs = [0, 1].map((i) => document.getElementById("tg" + i));
+  function fillTargets(s) {
+    customBox.checked = s.custom_target;
+    for (const i of [0, 1]) {
+      document.getElementById("tl" + i).textContent = s.teams[i].name;
+      const el = targetInputs[i];
+      el.disabled = !s.custom_target;
+      if (!targetsDirty && document.activeElement !== el) el.value = s.teams[i].target;
+    }
+    document.getElementById("apply_targets").disabled = !s.custom_target;
+    qlimitBox.checked = !!s.no_question_limit;
+    document.getElementById("qlimit_label").textContent = `${s.max_questions}問で終了しない`;
+  }
+  for (const el of targetInputs) el.addEventListener("input", () => { targetsDirty = true; });
+  // 送信前の確認（サーバーでも同じ確認をする）。問題があれば警告文を返す
+  function checkTargets(values) {
+    for (const i of [0, 1]) {
+      const v = values[i], team = current.teams[i];
+      if (!Number.isInteger(v) || v < 2 || v > 99999) return "勝利点は2〜99999の整数で入力してください";
+      if (v <= team.score) return `${team.name}の勝利点は、現在の得点（${team.score}点）より大きくしてください`;
+    }
+    return null;
+  }
+  async function applyTargets(custom) {
+    const values = targetInputs.map((el) => Number(el.value));
+    if (custom) {
+      const msg = checkTargets(values);
+      if (msg) { warn(msg); fillTargets(current); return; }
+    }
+    const ok = await send({ type: "targets", custom_target: custom, targets: custom ? values : null });
+    if (ok) targetsDirty = false;
+    else fillTargets(current); // 拒否されたらチェックの状態を元に戻す
+  }
+  customBox.onchange = () => applyTargets(customBox.checked);
+  // 「40問で終了しない」
+  const qlimitBox = document.getElementById("no_question_limit");
+  qlimitBox.onchange = async () => {
+    const ok = await send({ type: "question_limit", no_question_limit: qlimitBox.checked });
+    if (!ok) qlimitBox.checked = !!current.no_question_limit;
+  };
+  document.getElementById("apply_targets").onclick = () => applyTargets(true);
+  const poller = Board.poll(base + "/api/state", show);
+
+  let toastTimer;
+  function warn(message) {
+    const t = document.getElementById("toast");
+    t.textContent = message; t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove("show"), 4000);
+  }
+
+  let busy = false;
+  async function send(body) {
+    if (busy) return false;
+    busy = true;
+    try {
+      const r = await fetch(actionUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.detail || "操作に失敗しました");
+      poller.force(data);
+      return true;
+    } catch (e) {
+      warn(e.message);
+      return false;
+    } finally { busy = false; }
+  }
+
+  root.querySelector(".teams").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-a]");
+    if (b) send({ type: b.dataset.a, team: +b.dataset.t, seat: +b.dataset.s });
+  });
+  for (const key of ["show_question", "show_log"]) {
+    document.getElementById(key).onchange = (e) => send({ type: "display", [key]: e.target.checked });
+  }
+  document.getElementById("through").onclick = () => send({ type: "through" });
+  document.getElementById("undo").onclick = () => send({ type: "undo" });
+  // リセットの確認。「ダウンロードしてリセット」は記録の保存が終わってからリセットする
+  const resetDlg = document.getElementById("resetdlg");
+  async function downloadRecord() {
+    const r = await fetch(base + "/api/export", { cache: "no-store" });
+    if (!r.ok) throw new Error("試合記録を取得できませんでした");
+    const name = (r.headers.get("Content-Disposition") || "").match(/filename="([^"]+)"/)?.[1] || "aql_record.json";
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(await r.blob());
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  }
+  document.getElementById("reset").onclick = () => resetDlg.showModal();
+  resetDlg.addEventListener("click", async (e) => {
+    const choice = e.target.closest("button[data-choice]")?.dataset.choice;
+    if (!choice) return;
+    resetDlg.close();
+    if (choice === "cancel") return;
+    if (choice === "download") {
+      try { await downloadRecord(); }
+      catch (err) { warn(`${err.message}。リセットは行いませんでした`); return; }
+    }
+    send({ type: "reset" });
+  });
+  document.getElementById("rename").onclick = () =>
+    send({ type: "rename", title: document.getElementById("title").value,
+           names: [document.getElementById("n0").value, document.getElementById("n1").value] });
+</script>
+</body>
+</html>

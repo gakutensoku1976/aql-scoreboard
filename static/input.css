@@ -1,0 +1,96 @@
+.mode { white-space: nowrap; font-size: 12px; font-weight: 700; color: var(--bg); background: var(--ng); padding: 2px 8px; border-radius: var(--radius-xs); margin-left: 8px; vertical-align: 2px; }
+.jb { display: flex; gap: 4px; margin-top: 6px; padding: 0 2px; }
+.jb button { flex: 1; min-height: 44px; border-radius: var(--radius-xs); border: 1px solid var(--line); background: var(--bg); color: var(--ink); font-size: 20px; font-weight: 800; cursor: pointer; touch-action: manipulation; }
+.jb button.ok { color: var(--ok); }
+.jb button.ng { color: var(--ng); }
+.jb button:active { transform: scale(.96); }
+.jb button:disabled { opacity: .3; cursor: not-allowed; }
+.ops { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px; }
+.ops button, .names button { min-height: 44px; padding: 0 16px; border-radius: var(--radius-s); border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-size: 15px; font-weight: 600; cursor: pointer; }
+.ops .danger { color: var(--ng); border-color: var(--ng); margin-left: auto; }
+.names { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 14px; }
+.names input { min-height: 40px; flex: 1 1 140px; font-size: 15px; padding: 0 10px; border-radius: var(--radius-xs); border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ng); color: #fff; padding: 10px 16px; border-radius: var(--radius-s); font-weight: 600; display: none; max-width: calc(100% - 32px); }
+.toast.show { display: block; }
+@media (max-width: 420px) { .seat .pt { font-size: 26px; } .jb { flex-direction: column; } }
+.roster { margin-top: 16px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 14px; }
+.roster summary { cursor: pointer; font-weight: 600; min-height: 32px; display: flex; align-items: center; }
+.roster .rt { margin-top: 10px; }
+.roster h3 { font-size: 14px; margin: 8px 0 6px; }
+.roster .row { display: grid; grid-template-columns: 2.2em 1fr 1fr; gap: 6px; align-items: center; margin-bottom: 6px; }
+.roster .row b { text-align: center; color: var(--muted); }
+.roster input { min-height: 40px; min-width: 0; font-size: 15px; padding: 0 8px; border-radius: var(--radius-xs); border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.roster input.over { border-color: var(--ng); }
+.roster button { min-height: 40px; padding: 0 16px; border-radius: var(--radius-s); border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-size: 15px; font-weight: 600; cursor: pointer; }
+.display { margin: 16px 0 0; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 14px; display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; }
+.display legend { font-weight: 600; padding: 0 4px; }
+.display label { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; font-size: 15px; cursor: pointer; }
+.display input { width: 20px; height: 20px; }
+.display .note { flex-basis: 100%; font-size: 12px; color: var(--muted); }
+/* 閲覧画面で非表示の項目は、入力画面では薄く表示して注記する */
+.qcount.off, .log.off { opacity: .45; }
+.qcount.off::after { content: "非表示中"; font-size: 11px; margin-left: 4px; white-space: nowrap; }
+.log.off h2::after { content: " ― 閲覧画面では非表示"; }
+/* 見出しは1行。長い試合名は末尾を省略し、「出題者用」と問題数は常に見えるようにする */
+header.bar h1 { white-space: nowrap; display: flex; align-items: center; min-width: 0; }
+header.bar h1 .htitle { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+header.bar h1 .mode { flex: none; }
+header.bar .qcount { flex: none; }
+header.bar .qcount { white-space: nowrap; }
+.names input.wide { flex-basis: 100%; }
+/* 幅の狭い端末（スマホ）では、両チームの○×と「スルー」「1つ取り消す」が1画面に収まるよう詰める */
+@media (max-width: 600px) {
+  .wrap { padding: 10px; }
+  header.bar { margin-bottom: 8px; }
+  .teams { gap: 10px; }
+  .team { padding: 8px 10px 10px; border-top-width: 5px; }
+  .thead { margin-bottom: 4px; }
+  .tname { font-size: 17px; }
+  .tscore { font-size: 38px; }
+  .tscore small { font-size: 13px; }
+  .tscore small.target { font-size: 18px; }
+  :root[data-theme="sm"] .tscore small.target { font-size: 22px; }
+  .slot > .no { margin-bottom: 1px; }
+  :root[data-theme="sm"] .tscore { font-size: 40px; }
+  .ops { margin-top: 6px; }
+  :root[data-theme="sm"] .seat .pt { font-size: 32px; }
+  :root[data-theme="sm"] .slot > .no { font-size: 15px; }
+}
+.display .theme { font-size: 15px; color: var(--ink); gap: 8px; }
+.display .theme select { font-size: 15px; min-height: 36px; padding: 0 6px; }
+.option .targets { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; flex-basis: 100%; }
+.option .targets label { gap: 8px; }
+.option .targets span { max-width: 9em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.option input[type="number"] { width: 6.5em; min-height: 40px; font-size: 16px; padding: 0 8px; border-radius: var(--radius-xs); border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.option input[type="number"]:disabled { opacity: .5; }
+.option button { min-height: 40px; padding: 0 16px; border-radius: var(--radius-s); border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-size: 15px; font-weight: 600; cursor: pointer; }
+.option button:disabled { opacity: .4; cursor: not-allowed; }
+/* 更新時刻（得点表示のすぐ下、右寄せ）。左にコピー結果のお知らせ */
+.footrow { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 8px; }
+.footrow .foot { margin: 0 0 0 auto; text-align: right; }
+.footrow #shotmsg { font-size: 12px; color: var(--muted); min-width: 0; }
+/* 「試合記録をダウンロード」「画像をコピー」「試合をリセット」を並べて右に寄せる */
+.ops .ops-right { margin-left: auto; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.ops .ops-right .danger { margin-left: 0; }
+.ops .btn { display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: var(--radius-s); border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-size: 15px; font-weight: 600; text-decoration: none; }
+.ops #shot:disabled { opacity: .5; cursor: wait; }
+@media (max-width: 600px) {
+  .footrow { margin-top: 4px; }
+}
+/* リセットの確認画面 */
+#resetdlg { max-width: min(440px, calc(100% - 32px)); border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); color: var(--ink); padding: 18px 18px 16px; }
+#resetdlg::backdrop { background: rgba(0, 0, 0, .45); }
+#resetdlg h2 { font-size: 17px; margin: 0 0 8px; }
+#resetdlg p { font-size: 14px; margin: 0 0 14px; color: var(--muted); line-height: 1.6; }
+.dlg-actions { display: flex; flex-direction: column; gap: 8px; }
+.dlg-actions button { min-height: 44px; border-radius: var(--radius-s); border: 1px solid var(--line); background: var(--panel); color: var(--ink); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
+.dlg-actions .primary { background: var(--team0); border-color: var(--team0); color: var(--bg); }
+.dlg-actions .danger { color: var(--ng); border-color: var(--ng); }
+/* 畳める設定欄（参加者名・試合名とチーム名・オプションルール・閲覧画面の項目・この端末） */
+details.fold { margin-top: 16px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 14px; }
+details.fold > summary { cursor: pointer; font-weight: 600; min-height: 32px; display: flex; align-items: center; gap: 12px; }
+details.fold > summary .ftitle { flex: none; }
+details.fold > summary .fstate { flex: 1; min-width: 0; text-align: right; font-size: 12px; font-weight: 400; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+details.fold[open] > summary .fstate { visibility: hidden; }
+details.fold > .names, details.fold > .display { margin: 10px 0 0; background: none; border: 0; border-radius: 0; padding: 0; }
+.option .qlimit { flex-basis: 100%; }

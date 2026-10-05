@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AQL 得点状況</title>
+<link rel="icon" href="data:,">
+<script>try{var t=localStorage.getItem("aql-scoreboard-theme");if(t)document.documentElement.dataset.theme=t;}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" crossorigin="anonymous" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Saira+Extra+Condensed:wght@500;700&display=swap">
+<link rel="stylesheet" href="static/board.css">
+</head>
+<body>
+<main class="wrap" id="root">
+  <div id="capture">
+    <header class="bar"><h1>AQL 得点状況</h1>
+      <div class="hright"><div class="qcount"></div>
+        <details class="menu no-shot" id="menu">
+          <summary aria-label="メニュー" title="メニュー">☰</summary>
+          <div class="menu-panel" id="layout">
+            <button id="shot" type="button">画像をコピー</button>
+            <hr>
+            <label><input type="checkbox" data-layout="swap"> チームの左右を入れ替え</label>
+            <label><input type="checkbox" data-layout="rev0"> <span class="lname" data-t="0">チーム1</span>の枠を5→1</label>
+            <label><input type="checkbox" data-layout="rev1"> <span class="lname" data-t="1">チーム2</span>の枠を5→1</label>
+            <hr>
+            <label class="theme">表示モード <select id="theme"><option value="light">ライト</option><option value="dark">ダーク</option><option value="sm">SportsManiax</option></select></label>
+            <span class="note">設定はこの端末だけに保存されます</span>
+          </div>
+        </details>
+      </div>
+    </header>
+    <div class="banner"></div>
+    <div class="teams"></div>
+  </div>
+  <section class="log"><h2>判定の記録（新しい順）</h2><ol></ol></section>
+  <div class="vfoot">
+    <span id="shotmsg" role="status"></span>
+    <div class="foot"></div>
+  </div>
+</main>
+<script src="static/vendor/html-to-image-1.11.13.js"></script>
+<script src="static/board.js"></script>
+<script>
+  const root = document.getElementById("root");
+  Board.bindTheme(document.getElementById("theme"));
+  Board.bindLayout(document.getElementById("layout"), "aql-scoreboard-layout-viewer");
+  const h1 = root.querySelector("h1");
+  Board.poll("api/state", (s) => {
+    // 試合名があれば見出しとタブ名に出す。無ければ既定の見出し
+    h1.textContent = s.title || "AQL 得点状況";
+    h1.classList.toggle("has-title", !!s.title);
+    document.title = s.title ? `${s.title} | AQL 得点状況` : "AQL 得点状況";
+    Board.render(root, s);
+  });
+
+  // 表示中の得点状況（見出し・勝敗・両チーム。判定の記録は含めない）を画像にしてクリップボードへ。右上のメニューは写さない
+  Board.bindShot(document.getElementById("shot"), document.getElementById("shotmsg"), () => Board.shotStage(root, ".no-shot"));
+
+  // メニュー：外側を押す・Esc・「画像をコピー」で閉じる
+  const menu = document.getElementById("menu");
+  document.getElementById("shot").addEventListener("click", () => { menu.open = false; });
+  document.addEventListener("click", (e) => { if (menu.open && !menu.contains(e.target)) menu.open = false; });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") menu.open = false; });
+</script>
+</body>
+</html>
