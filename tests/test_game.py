@@ -244,3 +244,74 @@ def test_view_default_question_limit_for_old_state():
     s = game.new_state()
     del s["no_question_limit"]
     assert game.view(s)["no_question_limit"] is False
+
+
+EMPTY = [["", ""]] * 5
+
+
+def vacant_state(team=0, seats=(4,)):
+    v = [i in seats for i in range(5)]
+    return game.set_roster(game.new_state(), team, [list(p) for p in EMPTY], v)
+
+
+def test_vacant_seat_stays_one_and_rejects_judgements():
+    st = vacant_state(seats=(1, 4))
+    seat = st["teams"][0]["seats"][1]
+    assert seat["vacant"] and seat["score"] == 1 and seat["cross"] == 0
+    for f in (game.correct, game.wrong):
+        with pytest.raises(game.RuleError, match="空席"):
+            f(st, 0, 1)
+    st = game.correct(st, 0, 0)
+    st = game.correct(st, 0, 0)
+    assert game.product(st["teams"][0]) == 3
+    st = game.wrong(st, 1, 0)  # 相手の誤答でも空席は変わらない
+    assert sc(st["teams"][0]["seats"][1]) == {"score": 1, "cross": 0}
+    assert game.view(st)["teams"][0]["seats"][1]["vacant"] is True
+
+
+def test_vacant_seat_is_never_reach():
+    st = vacant_state(seats=(4,))
+    for s, n in zip(st["teams"][0]["seats"], (5, 5, 4, 1)):
+        s["score"] = n  # 積100。得点1の枠が +1 すると200に届く
+    v = game.view(st)
+    assert v["teams"][0]["seats"][3]["reach"] is True
+    assert v["teams"][0]["seats"][4]["reach"] is False
+    assert v["teams"][0]["seats"][4]["vacant"] is True
+
+
+def test_all_locked_ignores_vacant_seats():
+    st = vacant_state(team=1, seats=(2, 3, 4))
+    for seat in (0, 1):
+        st = game.wrong(st, 1, seat)
+        st = game.through(st)
+        st = game.wrong(st, 1, seat)
+    assert game.result(st) == {"winner": 0, "reason": "全枠封鎖"}
+
+
+def test_vacant_change_only_before_game_starts():
+    st = game.through(vacant_state(seats=(4,)))
+    with pytest.raises(game.RuleError, match="試合開始前"):
+        game.set_roster(st, 0, [list(p) for p in EMPTY], [False] * 5)
+    # 空席が同じなら名前は試合中でも変えられる（None も同じ扱い）
+    names = [["a", ""], ["", ""], ["", ""], ["", ""], ["x", ""]]
+    st2 = game.set_roster(st, 0, names, [False, False, False, False, True])
+    assert game.roster(st2["teams"][0])[0] == ["a", ""]
+    assert game.roster(st2["teams"][0])[4] == ["", ""]  # 空席の名前は消す
+    assert game.vacancies(game.set_roster(st, 0, names)["teams"][0])[4] is True
+
+
+def test_all_vacant_rejected():
+    with pytest.raises(game.RuleError, match="すべての枠"):
+        game.set_roster(game.new_state(), 0, [list(p) for p in EMPTY], [True] * 5)
+    with pytest.raises(game.RuleError, match="空席の指定"):
+        game.set_roster(game.new_state(), 0, [list(p) for p in EMPTY], [True] * 3)
+
+
+def test_view_handles_state_without_vacant():
+    st = game.new_state()
+    for t in st["teams"]:
+        for s in t["seats"]:
+            del s["vacant"]
+    assert all(not s["vacant"] for t in game.view(st)["teams"] for s in t["seats"])
+    st = game.correct(st, 0, 0)
+    assert game.product(st["teams"][0]) == 2

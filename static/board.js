@@ -7,6 +7,8 @@ const Board = (() => {
   let lastRender = null;
 
   function seatHtml(seat, i, t, controls, showNames) {
+    // 空席は枠だけ（名前・得点・×・○×ボタンを出さず、リーチ・封鎖の見た目も付けない）
+    if (seat.vacant) return `<div class="slot"><div class="no">${i + 1}</div><div class="seat vacant" data-t="${t}" data-s="${i}"></div></div>`;
     const cls = ["seat", seat.locked ? "locked" : "", seat.reach ? "reach" : ""].join(" ");
     const x = "×".repeat(seat.cross);
     const btns = controls ? controls(t, i, seat) : "";

@@ -88,16 +88,17 @@ def pop():
 
 
 def reset(state):
-    """チーム名・参加者名・試合名・勝利点の設定を残して最初の状態に戻す。"""
+    """チーム名・参加者名・空席・試合名・勝利点の設定を残して最初の状態に戻す。"""
     names = [t["name"] for t in state["teams"]]
     rosters = [game.roster(t) for t in state["teams"]]
+    vacants = [game.vacancies(t) for t in state["teams"]]
     with _conn() as conn:
         conn.execute("DELETE FROM states")
         body = game.new_state(names=names, max_questions=MAX_QUESTIONS, rosters=rosters,
                               title=state.get("title", ""),
                               custom_target=bool(state.get("custom_target")),
                               targets=state.get("targets", [game.WIN_SCORE, game.WIN_SCORE]),
-                              no_question_limit=bool(state.get("no_question_limit")))
+                              no_question_limit=bool(state.get("no_question_limit")), vacants=vacants)
         conn.execute("INSERT INTO states (body) VALUES (?)", (json.dumps(body, ensure_ascii=False),))
 
 
@@ -153,6 +154,7 @@ class Action(BaseModel):
     targets: list[int] | None = None
     no_question_limit: bool | None = None
     players: list[list[str]] | None = None
+    vacant: list[bool] | None = None
     show_question: bool | None = None
     show_log: bool | None = None
 
@@ -189,7 +191,7 @@ def act(a: Action):
             elif a.type == "question_limit":
                 push(game.set_question_limit(state, a.no_question_limit))
             elif a.type == "roster":
-                push(game.set_roster(state, a.team, a.players))
+                push(game.set_roster(state, a.team, a.players, a.vacant))
             elif a.type == "display":
                 display, _ = load_display()
                 for key in DEFAULT_DISPLAY:
@@ -232,7 +234,7 @@ def export_record(state, exported_at):
         "teams": [
             {"name": t["name"], "score": t["score"], "product": game.product(raw), "target": t["target"],
              "seats": [{"seat": i + 1, "players": [n for n in s["players"] if n], "score": s["score"],
-                        "cross": s["cross"], "locked": s["locked"], "reach": s["reach"]}
+                        "cross": s["cross"], "locked": s["locked"], "reach": s["reach"], "vacant": s["vacant"]}
                        for i, s in enumerate(t["seats"])]}
             for t, raw in zip(v["teams"], state["teams"])
         ],

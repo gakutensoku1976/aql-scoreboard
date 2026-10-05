@@ -17,10 +17,15 @@
 .roster summary { cursor: pointer; font-weight: 600; min-height: 32px; display: flex; align-items: center; }
 .roster .rt { margin-top: 10px; }
 .roster h3 { font-size: 14px; margin: 8px 0 6px; }
-.roster .row { display: grid; grid-template-columns: 2.2em 1fr 1fr; gap: 6px; align-items: center; margin-bottom: 6px; }
+.roster .row { display: grid; grid-template-columns: 2.2em 1fr 1fr auto; gap: 6px; align-items: center; margin-bottom: 6px; }
 .roster .row b { text-align: center; color: var(--muted); }
 .roster input { min-height: 40px; min-width: 0; font-size: 15px; padding: 0 8px; border-radius: var(--radius-xs); border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
 .roster input.over { border-color: var(--ng); }
+.roster input:disabled { opacity: .45; }
+.roster .vac { display: inline-flex; align-items: center; gap: 4px; font-size: 14px; white-space: nowrap; cursor: pointer; }
+.roster .vac input { min-height: 0; width: 18px; height: 18px; }
+.roster .vac:has(input:disabled) { color: var(--muted); cursor: default; }
+.roster .note { display: block; margin: 0 0 6px; font-size: 12px; color: var(--muted); }
 .roster button { min-height: 40px; padding: 0 16px; border-radius: var(--radius-s); border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-size: 15px; font-weight: 600; cursor: pointer; }
 .display { margin: 16px 0 0; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 14px; display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; }
 .display legend { font-weight: 600; padding: 0 4px; }

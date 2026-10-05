@@ -5,6 +5,8 @@
 - 正解: 枠の得点 +1
 - 誤答: 枠の得点を1に戻し、×を1つ増やす。×2で封鎖。相手チームの封鎖枠は×1に戻る
 - 勝敗: 勝利点到達 / 相手の全枠封鎖 / 規定問題数終了時の得点比較（オプションで規定問題数による終了を外せる）
+- 空席（練習・ハンデ戦用）: 選手が座らない枠。得点1・×0のまま動かず、リーチにも封鎖にもならない。
+  全枠封鎖は空席以外の枠で判定する。空席の変更は試合開始前（問題数0）だけ
 """
 
 import copy
@@ -28,12 +30,14 @@ TITLE_MAX = 40
 
 
 def new_state(names=("チームA", "チームB"), max_questions=40, rosters=None, title="",
-              custom_target=False, targets=(WIN_SCORE, WIN_SCORE), no_question_limit=False):
+              custom_target=False, targets=(WIN_SCORE, WIN_SCORE), no_question_limit=False, vacants=None):
     rosters = rosters or [empty_roster(), empty_roster()]
+    vacants = vacants or [[False] * SEATS, [False] * SEATS]
     return {
         "teams": [
-            {"name": n, "seats": [{"score": 1, "cross": 0, "players": list(p)} for p in r]}
-            for n, r in zip(names, rosters)
+            {"name": n, "seats": [{"score": 1, "cross": 0, "players": list(p), "vacant": bool(v)}
+                                  for p, v in zip(r, vs)]}
+            for n, r, vs in zip(names, rosters, vacants)
         ],
         "title": title,
         "custom_target": custom_target,
@@ -68,10 +72,19 @@ def is_locked(seat):
     return seat["cross"] >= 2
 
 
+def is_vacant(seat):
+    """空席（選手が座らない枠）か。古い状態にはキーが無いので空席なしとして扱う。"""
+    return bool(seat.get("vacant", False))
+
+
+def vacancies(team):
+    return [is_vacant(s) for s in team["seats"]]
+
+
 def is_reach(team, i, target=WIN_SCORE):
     """その枠が次に正解すると勝利点に届くか。"""
     seat = team["seats"][i]
-    if is_locked(seat):
+    if is_locked(seat) or is_vacant(seat):
         return False
     return product(team) // seat["score"] * (seat["score"] + 1) >= target
 
@@ -85,7 +98,7 @@ def result(state):
         if product(t) >= tg[idx]:
             return {"winner": idx, "reason": reason}
     for idx, t in enumerate((a, b)):
-        if all(is_locked(s) for s in t["seats"]):
+        if all(is_locked(s) for s in t["seats"] if not is_vacant(s)):
             return {"winner": 1 - idx, "reason": "全枠封鎖"}
     # 「40問で終了しない」が ON のときは規定問題数で終えない（無効になった問題の分を続けて出題できる）
     if not state.get("no_question_limit") and state["question"] >= state["max_questions"]:
@@ -100,6 +113,8 @@ def _check_playable(state, team, seat):
         raise RuleError("試合は終了しています")
     if team not in (0, 1) or not 0 <= seat < SEATS:
         raise RuleError("チームまたは枠の指定が不正です")
+    if is_vacant(state["teams"][team]["seats"][seat]):
+        raise RuleError("空席の枠です")
     if is_locked(state["teams"][team]["seats"][seat]):
         raise RuleError("封鎖中の枠です")
 
@@ -192,8 +207,9 @@ def roster(team):
     return [list(s.get("players", [""] * PLAYERS_PER_SEAT)) for s in team["seats"]]
 
 
-def set_roster(state, team, players):
-    """players: 5枠 × 最大2名の名前。空欄は空文字。"""
+def set_roster(state, team, players, vacant=None):
+    """players: 5枠 × 最大2名の名前。空欄は空文字。
+    vacant: 5枠ぶんの空席の指定（None なら変えない）。変更は試合開始前（問題数0）だけ。空席の枠の名前は消す。"""
     if team not in (0, 1) or not isinstance(players, list) or len(players) != SEATS:
         raise RuleError("参加者名の指定が不正です")
     cleaned = []
@@ -205,9 +221,22 @@ def set_roster(state, team, players):
             if name_width(n) > NAME_WIDTH:
                 raise RuleError(f"「{n}」が長すぎます（全角6文字・半角12文字まで）")
         cleaned.append(names)
+    current = vacancies(state["teams"][team])
+    if vacant is None:
+        vacant = current
+    if not isinstance(vacant, list) or len(vacant) != SEATS:
+        raise RuleError("空席の指定が不正です")
+    vacant = [bool(v) for v in vacant]
+    if vacant != current and state["question"] > 0:
+        raise RuleError("空席は試合開始前（リセット直後）にだけ変更できます")
+    if all(vacant):
+        raise RuleError("すべての枠を空席にはできません")
     st = copy.deepcopy(state)
-    for seat, names in zip(st["teams"][team]["seats"], cleaned):
-        seat["players"] = names
+    for seat, names, v in zip(st["teams"][team]["seats"], cleaned, vacant):
+        seat["players"] = [""] * PLAYERS_PER_SEAT if v else names
+        seat["vacant"] = v
+        if v:
+            seat["score"], seat["cross"] = 1, 0
     return st
 
 
@@ -219,7 +248,7 @@ def view(state):
     for t, target in zip(state["teams"], tg):
         seats = [
             # 試合が終わったらリーチは意味を持たないので出さない
-            {**s, "players": roster(t)[i], "locked": is_locked(s),
+            {**s, "players": roster(t)[i], "locked": is_locked(s), "vacant": is_vacant(s),
              "reach": res is None and is_reach(t, i, target)}
             for i, s in enumerate(t["seats"])
         ]

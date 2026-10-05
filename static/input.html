@@ -30,7 +30,7 @@
   </div>
   <section class="log"><h2>判定の記録（新しい順）</h2><ol></ol></section>
   <details class="roster fold" id="roster">
-    <summary><span class="ftitle">参加者名を編集</span><span class="fstate">1枠2名まで・全角6文字まで</span></summary>
+    <summary><span class="ftitle">参加者名を編集</span><span class="fstate" id="fs-roster"></span></summary>
     <div class="rt" data-t="0"></div>
     <div class="rt" data-t="1"></div>
   </details>
@@ -78,7 +78,7 @@
 <div class="toast" id="toast"></div>
 <dialog id="resetdlg" aria-labelledby="resetdlg-title">
   <h2 id="resetdlg-title">試合をリセットしますか？</h2>
-  <p>得点と判定の記録をすべて消して、試合を最初からにします。試合名・チーム名・参加者名・勝利点の設定は残ります。</p>
+  <p>得点と判定の記録をすべて消して、試合を最初からにします。試合名・チーム名・参加者名・空席・勝利点の設定は残ります。</p>
   <div class="dlg-actions">
     <button type="button" class="primary" data-choice="download">試合記録をダウンロードしてリセット</button>
     <button type="button" class="danger" data-choice="reset">ダウンロードせずにリセット</button>
@@ -114,14 +114,29 @@
     for (const t of [0, 1]) {
       const box = document.querySelector(`.rt[data-t="${t}"]`);
       if (dirty[t] || box.contains(document.activeElement)) continue; // 保存前の入力は上書きしない
-      box.innerHTML = `<h3>${Board.esc(s.teams[t].name)}</h3>` + s.teams[t].seats.map((seat, i) =>
+      // 空席は試合開始前（問題数0）にだけ変えられる。空席の枠は名前欄を使わない
+      const locked = s.question > 0 ? "disabled" : "";
+      box.innerHTML = `<h3>${Board.esc(s.teams[t].name)}</h3>` +
+        (locked ? `<span class="note">空席は試合開始前（リセット直後）にだけ変更できます</span>` : "") +
+        s.teams[t].seats.map((seat, i) =>
         `<div class="row"><b>${i + 1}</b>` + [0, 1].map((k) =>
-          `<input data-s="${i}" data-k="${k}" maxlength="12" placeholder="${k + 1}人目" value="${Board.esc((seat.players || [])[k] || "")}">`).join("") +
+          `<input data-s="${i}" data-k="${k}" maxlength="12" placeholder="${k + 1}人目" value="${Board.esc((seat.players || [])[k] || "")}"${seat.vacant ? " disabled" : ""}>`).join("") +
+        `<label class="vac"><input type="checkbox" data-vacant="${i}"${seat.vacant ? " checked" : ""} ${locked}> 空席</label>` +
         `</div>`).join("") + `<button data-save="${t}">${Board.esc(s.teams[t].name)} の参加者名を保存</button>`;
     }
   }
+  // 空席にした枠は名前欄を空けて使えなくする
+  document.getElementById("roster").addEventListener("change", (e) => {
+    if (!e.target.matches("input[data-vacant]")) return;
+    const row = e.target.closest(".row");
+    for (const el of row.querySelectorAll("input[data-k]")) {
+      el.disabled = e.target.checked;
+      if (e.target.checked) { el.value = ""; el.classList.remove("over"); }
+    }
+    dirty[+e.target.closest(".rt").dataset.t] = true;
+  });
   document.getElementById("roster").addEventListener("input", (e) => {
-    if (!e.target.matches("input")) return;
+    if (!e.target.matches("input[data-k]")) return;
     e.target.classList.toggle("over", width(e.target.value.trim()) > 12);
     dirty[+e.target.closest(".rt").dataset.t] = true;
   });
@@ -131,9 +146,10 @@
     const t = +b.dataset.save;
     const players = [0, 1, 2, 3, 4].map((i) => [0, 1].map((k) =>
       document.querySelector(`.rt[data-t="${t}"] input[data-s="${i}"][data-k="${k}"]`).value));
+    const vacant = [0, 1, 2, 3, 4].map((i) => document.querySelector(`.rt[data-t="${t}"] input[data-vacant="${i}"]`).checked);
     b.blur();
     dirty[t] = false;
-    send({ type: "roster", team: t, players }).then((ok) => { if (!ok) dirty[t] = true; });
+    send({ type: "roster", team: t, players, vacant }).then((ok) => { if (!ok) dirty[t] = true; });
   });
 
   const show = (s) => {
@@ -162,6 +178,10 @@
 
   // 畳んだ欄の見出しに今の設定を出す
   function fillFoldStates(s) {
+    const vac = s.teams.map((t) => t.seats.filter((x) => x.vacant).length);
+    document.getElementById("fs-roster").textContent = vac.some((n) => n)
+      ? s.teams.map((t, i) => (vac[i] ? `${t.name} 空席${vac[i]}枠` : "")).filter((x) => x).join("　")
+      : "1枠2名まで・全角6文字まで";
     document.getElementById("fs-names").textContent = `${s.title || "試合名なし"}　${s.teams[0].name} 対 ${s.teams[1].name}`;
     const opts = [s.custom_target ? `勝利点 ${s.teams[0].target} / ${s.teams[1].target}` : "勝利点 200"];
     if (s.no_question_limit) opts.push(`${s.max_questions}問で終了しない`);

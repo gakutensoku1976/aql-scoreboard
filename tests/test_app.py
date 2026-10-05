@@ -174,7 +174,7 @@ def test_export_contents(client):
     assert d["question"] == 16 and d["result"] is None
     a, b = d["teams"]
     assert (a["name"], a["score"], a["product"], a["target"]) == ("中日", 8, 8, 300)
-    assert a["seats"][0] == {"seat": 1, "players": ["彦野", "仁村"], "score": 8, "cross": 0, "locked": False, "reach": False}
+    assert a["seats"][0] == {"seat": 1, "players": ["彦野", "仁村"], "score": 8, "cross": 0, "locked": False, "reach": False, "vacant": False}
     assert a["seats"][1]["players"] == ["立浪"] and a["seats"][2]["players"] == []
     assert b["seats"][2]["locked"] is True and b["seats"][2]["cross"] == 2
     assert len(d["log"]) == 16  # 画面の12件制限を受けず全件
@@ -221,3 +221,24 @@ def test_roster_accepts_six_fullwidth_chars(client):
     r = post(client, type="roster", team=0, players=[["寿限無寿限無", "abcdefghijkl"]] + [["", ""]] * 4)
     assert r.status_code == 200
     assert r.json()["teams"][0]["seats"][0]["players"] == ["寿限無寿限無", "abcdefghijkl"]
+
+
+def test_vacant_roster_action_reset_undo_export(client):
+    names = [["", ""]] * 5
+    vac = [False, False, False, True, True]
+    assert post(client, type="roster", team=1, players=names, vacant=vac).status_code == 200
+    s = client.get("/api/state").json()
+    assert [x["vacant"] for x in s["teams"][1]["seats"]] == vac
+    assert not any(x["vacant"] for x in s["teams"][0]["seats"])
+    assert post(client, type="correct", team=1, seat=3).status_code == 409
+    post(client, type="correct", team=1, seat=0)
+    r = post(client, type="roster", team=1, players=names, vacant=[False] * 5)
+    assert r.status_code == 409 and "試合開始前" in r.json()["detail"]
+    d = client.get("/secret-xyz/api/export").json()
+    assert [x["vacant"] for x in d["teams"][1]["seats"]] == vac
+    post(client, type="reset")
+    s = client.get("/api/state").json()
+    assert [x["vacant"] for x in s["teams"][1]["seats"]] == vac and s["question"] == 0
+    post(client, type="roster", team=1, players=names, vacant=[False] * 5)
+    post(client, type="undo")
+    assert [x["vacant"] for x in client.get("/api/state").json()["teams"][1]["seats"]] == vac
