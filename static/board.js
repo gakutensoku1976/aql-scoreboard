@@ -85,13 +85,18 @@ const Board = (() => {
     lastLogLen = s.log.length;
   }
 
-  // 一定間隔で状態を取得し、版が変わったときだけ描画する
-  function poll(url, onState, intervalMs = 1500) {
+  // 一定間隔で状態を取得し、版が変わったときだけ描画する。
+  // onHttpError(status) は 401・404 などの応答で呼び、true を返したら取得をやめる
+  function poll(url, onState, intervalMs = 1500, onHttpError = null) {
     let version = null;
     const foot = document.querySelector(".foot");
     async function tick() {
       try {
         const r = await fetch(url, { cache: "no-store" });
+        if (r.status === 401 || r.status === 404) {
+          if (onHttpError && onHttpError(r.status)) return;
+          throw new Error(String(r.status));
+        }
         const s = await r.json();
         if (s.version !== version) { version = s.version; onState(s); }
         foot.textContent = `更新: ${new Date().toLocaleTimeString("ja-JP")}`;

@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" crossorigin="anonymous" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Saira+Extra+Condensed:wght@500;700&display=swap">
-<link rel="stylesheet" href="static/board.css">
+<link rel="stylesheet" href="{{STATIC}}/board.css">
 </head>
 <body>
 <main class="wrap" id="root">
@@ -40,19 +40,26 @@
     <div class="foot"></div>
   </div>
 </main>
-<script src="static/vendor/html-to-image-1.11.13.js"></script>
-<script src="static/board.js"></script>
+<script src="{{STATIC}}/vendor/html-to-image-1.11.13.js"></script>
+<script src="{{STATIC}}/board.js"></script>
 <script>
   const root = document.getElementById("root");
   Board.bindTheme(document.getElementById("theme"));
   Board.bindLayout(document.getElementById("layout"), "aql-scoreboard-layout-viewer");
   const h1 = root.querySelector("h1");
-  Board.poll("api/state", (s) => {
+  // 試合IDは URL の最後の部分（/score/<ID>）
+  const gameId = decodeURIComponent(location.pathname.replace(/\/$/, "").split("/").pop()).toLowerCase();
+  Board.poll(`api/games/${encodeURIComponent(gameId)}/state`, (s) => {
     // 試合名があれば見出しとタブ名に出す。無ければ既定の見出し
     h1.textContent = s.title || "AQL 得点状況";
     h1.classList.toggle("has-title", !!s.title);
     document.title = s.title ? `${s.title} | AQL 得点状況` : "AQL 得点状況";
     Board.render(root, s);
+  }, 1500, (status) => {
+    // 試合が削除された
+    if (status !== 404) return false;
+    location.reload();
+    return true;
   });
 
   // 表示中の得点状況（見出し・勝敗・両チーム。判定の記録は含めない）を画像にしてクリップボードへ。右上のメニューは写さない

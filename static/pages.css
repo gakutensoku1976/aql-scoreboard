@@ -1,0 +1,37 @@
+/* ID入力・ログイン・管理者画面 */
+.wrap.narrow { max-width: 560px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
+.card label { display: block; font-weight: 700; margin-bottom: 8px; }
+.card .line { display: flex; gap: 8px; }
+.card input { flex: 1; min-width: 0; min-height: 44px; font: inherit; font-size: 16px; padding: 0 10px; border-radius: var(--radius-xs); border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.card button, .btn2 { min-height: 44px; padding: 0 18px; font: inherit; font-weight: 700; border-radius: var(--radius-s); border: 1px solid var(--ink); background: var(--ink); color: var(--bg); cursor: pointer; white-space: nowrap; }
+.btn2.sub { background: var(--panel); color: var(--ink); border-color: var(--line); font-weight: 600; }
+.btn2.danger { background: var(--panel); color: var(--ng); border-color: var(--ng); font-weight: 600; }
+.card .note, .note { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
+.msg { color: var(--ng); font-size: 14px; margin: 8px 0 0; min-height: 1.2em; }
+.msg.ok { color: var(--ok); }
+.card a, .games a { color: var(--team0); }
+/* 管理者画面 */
+.wrap.admin { max-width: 1100px; }
+.admin .hright { display: flex; align-items: center; gap: 8px; }
+.admin h2 { font-size: 15px; margin: 0 0 12px; }
+.create { display: grid; grid-template-columns: 1fr 1fr 2fr auto; gap: 10px; align-items: end; }
+.card .field { display: flex; flex-direction: column; gap: 4px; margin: 0; font-size: 12px; font-weight: 600; color: var(--muted); }
+.card .field input { flex: none; font-weight: 400; }
+@media (max-width: 720px) { .create { grid-template-columns: 1fr; } }
+.games { width: 100%; border-collapse: collapse; font-size: 14px; }
+.games th, .games td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.games th { font-size: 12px; color: var(--muted); font-weight: 600; }
+.games td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.games .id { font-weight: 700; font-family: ui-monospace, monospace; }
+.games .links a { margin-right: 10px; white-space: nowrap; }
+.games .empty { color: var(--muted); text-align: center; padding: 20px; }
+@media (max-width: 720px) {
+  .games thead { display: none; }
+  .games tr { display: block; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .games td { display: block; border: 0; padding: 2px 0; }
+}
+dialog { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); color: var(--ink); max-width: min(460px, calc(100% - 32px)); }
+dialog::backdrop { background: rgba(0, 0, 0, .45); }
+dialog .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.games .btn2, .admin .hright .btn2 { min-height: 34px; padding: 0 12px; font-size: 13px; }

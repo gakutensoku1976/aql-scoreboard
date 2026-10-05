@@ -10,12 +10,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" crossorigin="anonymous" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Saira+Extra+Condensed:wght@500;700&display=swap">
-<link rel="stylesheet" href="static/board.css">
-<link rel="stylesheet" href="static/input.css">
+<link rel="stylesheet" href="{{STATIC}}/board.css">
+<link rel="stylesheet" href="{{STATIC}}/input.css">
 </head>
 <body>
 <main class="wrap" id="root">
-  <header class="bar"><h1><span class="htitle">AQL 正誤入力</span><span class="mode">出題者用</span></h1><div class="qcount"></div></header>
+  <header class="bar"><h1><span class="htitle">AQL 正誤入力</span><span class="mode">出題者用 <span id="gid"></span></span></h1><div class="qcount"></div></header>
   <div class="banner"></div>
   <div class="teams"></div>
   <div class="footrow"><span id="shotmsg" role="status"></span><div class="foot"></div></div>
@@ -74,6 +74,7 @@
     <span class="note">設定はこの端末だけに保存されます。表示モードは閲覧画面と共通、並び順はこの入力画面だけの設定です（閲覧画面には反映されません）。</span>
   </div>
   </details>
+  <div class="session">試合ID <b id="gid2"></b><button id="logout" type="button">ログアウト</button></div>
 </main>
 <div class="toast" id="toast"></div>
 <dialog id="resetdlg" aria-labelledby="resetdlg-title">
@@ -85,12 +86,21 @@
     <button type="button" data-choice="cancel">キャンセル</button>
   </div>
 </dialog>
-<script src="static/vendor/html-to-image-1.11.13.js"></script>
-<script src="static/board.js"></script>
+<script src="{{STATIC}}/vendor/html-to-image-1.11.13.js"></script>
+<script src="{{STATIC}}/board.js"></script>
 <script>
   const root = document.getElementById("root");
   const base = location.pathname.replace(/\/$/, "");
   const actionUrl = base + "/api/action";
+  const gameId = decodeURIComponent(base.split("/").pop()).toLowerCase();
+  document.getElementById("gid").textContent = gameId;
+  document.getElementById("gid2").textContent = gameId;
+  document.getElementById("logout").onclick = async () => {
+    await fetch(base + "/logout", { method: "POST" }).catch(() => {});
+    location.reload();
+  };
+  // ログインが切れた（他の端末で試合が作り直された・期限切れ）・試合が削除されたときは読み直してログイン画面などへ
+  const relogin = (status) => { location.reload(); return true; };
   document.getElementById("export").href = base + "/api/export";
   let current = null;
 
@@ -254,7 +264,7 @@
     if (!ok) qlimitBox.checked = !!current.no_question_limit;
   };
   document.getElementById("apply_targets").onclick = () => applyTargets(true);
-  const poller = Board.poll(base + "/api/state", show);
+  const poller = Board.poll(base + "/api/state", show, 1500, relogin);
 
   let toastTimer;
   function warn(message) {
@@ -270,6 +280,7 @@
     busy = true;
     try {
       const r = await fetch(actionUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      if (r.status === 401 || r.status === 404) { relogin(r.status); return false; }
       const data = await r.json();
       if (!r.ok) throw new Error(data.detail || "操作に失敗しました");
       poller.force(data);

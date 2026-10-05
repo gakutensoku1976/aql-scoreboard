@@ -99,3 +99,6 @@ details.fold > summary .fstate { flex: 1; min-width: 0; text-align: right; font-
 details.fold[open] > summary .fstate { visibility: hidden; }
 details.fold > .names, details.fold > .display { margin: 10px 0 0; background: none; border: 0; border-radius: 0; padding: 0; }
 .option .qlimit { flex-basis: 100%; }
+.session { margin-top: 16px; display: flex; align-items: center; justify-content: flex-end; gap: 10px; font-size: 13px; color: var(--muted); }
+.session b { color: var(--ink); }
+.session button { min-height: 36px; padding: 0 14px; border-radius: var(--radius-s); border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-size: 14px; cursor: pointer; }

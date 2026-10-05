@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:,">
+<script>try{var t=localStorage.getItem("aql-scoreboard-theme");if(t)document.documentElement.dataset.theme=t;}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" crossorigin="anonymous" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Saira+Extra+Condensed:wght@500;700&display=swap">
+<link rel="stylesheet" href="{{STATIC}}/board.css">
+<link rel="stylesheet" href="{{STATIC}}/pages.css">
+<title>試合の管理 | AQL</title>
+</head>
+<body>
+<main class="wrap admin">
+  <header class="bar"><h1>試合の管理</h1>
+    <div class="hright">
+      <label class="theme">表示モード <select id="theme"><option value="light">ライト</option><option value="dark">ダーク</option><option value="sm">SportsManiax</option></select></label>
+      <button class="btn2 sub" id="logout" type="button">ログアウト</button>
+    </div>
+  </header>
+  <form class="card" id="create">
+    <h2>試合の作成</h2>
+    <div class="create">
+      <label class="field">試合ID（半角英数字と - _、32文字まで）<input id="nid" maxlength="32" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="例：503-1" required></label>
+      <label class="field">入力用パスワード（4〜64文字）<input id="npw" maxlength="64" autocomplete="off" autocapitalize="off" spellcheck="false" required></label>
+      <label class="field">試合名（任意。入力画面で変更可）<input id="ntitle" maxlength="40" placeholder="例：503会議室 第1試合"></label>
+      <button class="btn2" type="submit">作成</button>
+    </div>
+    <p class="msg" id="msg" role="status"></p>
+    <p class="note">パスワードは作成後に確かめられません。出題者に伝えてから画面を閉じてください（忘れた場合は試合を削除して作り直します）。</p>
+  </form>
+  <section class="card">
+    <h2>試合の一覧</h2>
+    <table class="games">
+      <thead><tr><th>試合ID</th><th>試合名</th><th>対戦</th><th>問題数</th><th>状況</th><th>作成</th><th>画面</th><th></th></tr></thead>
+      <tbody id="list"></tbody>
+    </table>
+  </section>
+  <div class="foot"></div>
+</main>
+<dialog id="deldlg" aria-labelledby="deldlg-title">
+  <h2 id="deldlg-title">試合を削除しますか？</h2>
+  <p>試合「<b id="delid"></b>」の得点・判定の記録・設定をすべて消します。元に戻せません。</p>
+  <div class="acts">
+    <button type="button" class="btn2 danger" data-choice="delete">削除する</button>
+    <button type="button" class="btn2 sub" data-choice="cancel">キャンセル</button>
+  </div>
+</dialog>
+<script src="{{STATIC}}/board.js"></script>
+<script>
+  const esc = Board.esc;
+  Board.bindTheme(document.getElementById("theme"));
+  const base = location.pathname.replace(/\/$/, "");  // …/admin
+  const api = base + "/api/games";
+  const msg = document.getElementById("msg");
+  const say = (text, ok) => { msg.textContent = text; msg.classList.toggle("ok", !!ok); };
+
+  async function call(method, url, body) {
+    const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: body && JSON.stringify(body) });
+    if (r.status === 401) { location.reload(); throw new Error("ログインし直してください"); }
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.detail || "操作に失敗しました");
+    return data;
+  }
+
+  const fmt = (iso) => { const d = new Date(iso); return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
+  function status(g) {
+    if (g.result) return g.result.winner === null ? `引き分け（${esc(g.result.reason)}）` : `${esc(g.result.winner_name)} 勝利（${esc(g.result.reason)}）`;
+    return g.question === 0 ? "開始前" : "試合中";
+  }
+  function render(games) {
+    const root = base.replace(/admin$/, "");  // 閲覧・入力画面のリンクの起点（…/score/）
+    document.getElementById("list").innerHTML = games.length ? games.map((g) => {
+      const id = encodeURIComponent(g.id);
+      const q = g.no_question_limit ? `第${g.question}問` : `${g.question} / ${g.max_questions}`;
+      return `<tr><td class="id">${esc(g.id)}</td><td>${esc(g.title) || "—"}</td>` +
+        `<td>${esc(g.teams[0].name)} <b>${g.teams[0].score}</b> 対 <b>${g.teams[1].score}</b> ${esc(g.teams[1].name)}</td>` +
+        `<td class="num">${q}</td><td>${status(g)}</td><td class="num">${fmt(g.created_at)}</td>` +
+        `<td class="links"><a href="${root}${id}" target="_blank" rel="noopener">閲覧</a><a href="${root}input/${id}" target="_blank" rel="noopener">入力</a></td>` +
+        `<td><button class="btn2 danger" type="button" data-del="${esc(g.id)}">削除</button></td></tr>`;
+    }).join("") : '<tr><td class="empty" colspan="8">まだ試合がありません</td></tr>';
+  }
+
+  const foot = document.querySelector(".foot");
+  async function refresh() {
+    try {
+      render((await call("GET", api)).games);
+      foot.textContent = `更新: ${new Date().toLocaleTimeString("ja-JP")}`;
+      foot.classList.remove("stale");
+    } catch {
+      foot.textContent = "接続できません。再試行しています…";
+      foot.classList.add("stale");
+    }
+  }
+  refresh();
+  setInterval(refresh, 5000);
+
+  document.getElementById("create").onsubmit = async (e) => {
+    e.preventDefault();
+    const id = document.getElementById("nid").value.trim().toLowerCase();
+    const password = document.getElementById("npw").value;
+    try {
+      const data = await call("POST", api, { id, password, title: document.getElementById("ntitle").value });
+      render(data.games);
+      say(`試合「${data.id}」を作成しました（入力用パスワード：${password}）`, true);
+      for (const k of ["nid", "npw", "ntitle"]) document.getElementById(k).value = "";
+    } catch (err) { say(err.message); }
+  };
+
+  const dlg = document.getElementById("deldlg");
+  let target = null;
+  document.getElementById("list").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-del]");
+    if (!b) return;
+    target = b.dataset.del;
+    document.getElementById("delid").textContent = target;
+    dlg.showModal();
+  });
+  dlg.addEventListener("click", async (e) => {
+    const choice = e.target.closest("button[data-choice]")?.dataset.choice;
+    if (!choice) return;
+    dlg.close();
+    if (choice !== "delete") return;
+    try {
+      render((await call("DELETE", `${api}/${encodeURIComponent(target)}`)).games);
+      say(`試合「${target}」を削除しました`, true);
+    } catch (err) { say(err.message); }
+  });
+  document.getElementById("logout").onclick = async () => {
+    await fetch(base + "/logout", { method: "POST" }).catch(() => {});
+    location.reload();
+  };
+</script>
+</body>
+</html>

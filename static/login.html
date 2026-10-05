@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:,">
+<script>try{var t=localStorage.getItem("aql-scoreboard-theme");if(t)document.documentElement.dataset.theme=t;}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" crossorigin="anonymous" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Saira+Extra+Condensed:wght@500;700&display=swap">
+<link rel="stylesheet" href="{{STATIC}}/board.css">
+<link rel="stylesheet" href="{{STATIC}}/pages.css">
+<title>ログイン | AQL</title>
+</head>
+<body>
+<main class="wrap narrow">
+  <header class="bar"><h1 id="heading">ログイン</h1></header>
+  <form class="card" id="login">
+    <label for="pw" id="label">パスワード</label>
+    <div class="line">
+      <input id="pw" type="password" autocomplete="current-password" required>
+      <button type="submit">ログイン</button>
+    </div>
+    <p class="msg" id="msg" role="alert"></p>
+  </form>
+</main>
+<script>
+  // 入力画面（/input/<ID>）と管理者画面（/admin）で共用する
+  const path = location.pathname.replace(/\/$/, "");
+  const parts = path.split("/");
+  const isAdmin = parts[parts.length - 1] === "admin";
+  const heading = isAdmin ? "管理者ログイン" : `試合「${decodeURIComponent(parts[parts.length - 1]).toLowerCase()}」の正誤入力`;
+  document.getElementById("heading").textContent = heading;
+  document.title = `${heading} | AQL`;
+  document.getElementById("label").textContent = isAdmin ? "管理者パスワード" : "この試合の入力用パスワード";
+  const msg = document.getElementById("msg");
+  document.getElementById("login").onsubmit = async (e) => {
+    e.preventDefault();
+    msg.textContent = "";
+    try {
+      const r = await fetch(path + "/login", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: document.getElementById("pw").value }) });
+      if (r.ok) { location.reload(); return; }
+      msg.textContent = (await r.json()).detail || "ログインできませんでした";
+    } catch {
+      msg.textContent = "接続できません";
+    }
+  };
+  document.getElementById("pw").focus();
+</script>
+</body>
+</html>
