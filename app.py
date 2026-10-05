@@ -73,7 +73,7 @@ def _conn():
     return conn
 
 
-DEFAULT_DISPLAY = {"show_question": True, "show_log": True}
+DEFAULT_DISPLAY = {"show_question": False, "show_log": False}  # 既定はどちらも表示しない
 
 
 def load_display(gid):

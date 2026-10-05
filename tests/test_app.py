@@ -76,7 +76,7 @@ def test_rename_and_reset_keeps_names(client):
     post(client, type="rename", names=["QUAPS", "  "])
     post(client, type="correct", team=0, seat=0)
     post(client, type="reset")
-    s = client.get("/api/games/t1/state").json()
+    s = client.get("/input/t1/api/state").json()
     assert [t["name"] for t in s["teams"]] == ["QUAPS", "チームB"]
     assert s["question"] == 0 and s["log"] == []
 
@@ -96,35 +96,40 @@ def test_roster_too_long_rejected(client):
     assert r.status_code == 409
 
 
-def test_display_off_removes_items_from_viewer_api(client):
+def test_display_default_off_and_toggle(client):
     post(client, type="correct", team=0, seat=0)
     post(client, type="through")
+    # 既定はどちらも表示しない。閲覧用 API の応答からも外れる
+    v = client.get("/api/games/t1/state").json()
+    assert "question" not in v and "max_questions" not in v and "log" not in v
+    full = client.get("/input/t1/api/state").json()
+    assert full["question"] == 2 and len(full["log"]) == 2  # 入力画面には残る
+    assert full["display"] == {"show_question": False, "show_log": False}
+
+    post(client, type="display", show_question=True, show_log=True)
     v = client.get("/api/games/t1/state").json()
     assert v["question"] == 2 and v["log"][0]["q"] == 1
 
     r = post(client, type="display", show_question=False)
-    assert r.status_code == 200 and r.json()["question"] == 2  # 入力画面には残る
+    assert r.status_code == 200 and r.json()["question"] == 2
     v = client.get("/api/games/t1/state").json()
     assert "question" not in v and "max_questions" not in v
-    assert all("q" not in e for e in v["log"])
+    assert all("q" not in e for e in v["log"])  # 問題数を出さないときは記録の問題番号も外す
 
     post(client, type="display", show_log=False)
     v = client.get("/api/games/t1/state").json()
     assert "log" not in v and "question" not in v
-    full = client.get("/input/t1/api/state").json()
-    assert full["question"] == 2 and len(full["log"]) == 2
-    assert full["display"] == {"show_question": False, "show_log": False}
 
 
 def test_display_change_bumps_version_and_survives_undo_reset(client):
     v0 = client.get("/api/games/t1/state").json()["version"]
-    post(client, type="display", show_log=False)
+    post(client, type="display", show_log=True)
     v1 = client.get("/api/games/t1/state").json()["version"]
     assert v1 != v0  # 閲覧画面が再描画されるように版が変わる
     post(client, type="correct", team=1, seat=1)
     post(client, type="undo")
     post(client, type="reset")
-    assert client.get("/input/t1/api/state").json()["display"]["show_log"] is False
+    assert client.get("/input/t1/api/state").json()["display"]["show_log"] is True
 
 
 def test_full_state_requires_login(app_module, client):
@@ -270,7 +275,7 @@ def test_vacant_roster_action_reset_undo_export(client):
     d = client.get("/input/t1/api/export").json()
     assert [x["vacant"] for x in d["teams"][1]["seats"]] == vac
     post(client, type="reset")
-    s = client.get("/api/games/t1/state").json()
+    s = client.get("/input/t1/api/state").json()
     assert [x["vacant"] for x in s["teams"][1]["seats"]] == vac and s["question"] == 0
     post(client, type="roster", team=1, players=names, vacant=[False] * 5)
     post(client, type="undo")
@@ -335,16 +340,16 @@ def test_games_are_independent(app_module, client):
     assert client.post("/input/t2/login", json={"password": "pass-t2"}).status_code == 200
     post(client, type="correct", team=0, seat=0)
     post(client, gid="t2", type="wrong", team=1, seat=1)
-    post(client, gid="t2", type="display", show_log=False)
+    post(client, gid="t2", type="display", show_log=True)
     a = client.get("/api/games/t1/state").json()
     b = client.get("/api/games/t2/state").json()
     assert a["teams"][0]["score"] == 2 and b["teams"][0]["score"] == 1
     assert b["teams"][1]["seats"][1]["cross"] == 1 and a["teams"][1]["seats"][1]["cross"] == 0
-    assert "log" in a and "log" not in b
+    assert "log" not in a and "log" in b
     post(client, type="undo")
     post(client, gid="t2", type="through")
     post(client, type="reset")
-    assert client.get("/api/games/t2/state").json()["question"] == 2
+    assert client.get("/input/t2/api/state").json()["question"] == 2
     games = {g["id"]: g for g in client.get("/admin/api/games").json()["games"]}
     assert games["t2"]["question"] == 2 and games["t1"]["question"] == 0
 
@@ -359,7 +364,8 @@ def test_delete_game_and_recreate_invalidates_login(app_module, client):
     create(client, "t1", PW)  # 同じIDとパスワードで作り直しても、古いログインは通らない
     assert post(client, type="through").status_code == 401
     s = client.get("/api/games/t1/state").json()
-    assert s["question"] == 0 and s["teams"][0]["score"] == 1  # 前の試合の状態は残らない
+    assert s["teams"][0]["score"] == 1  # 前の試合の状態は残らない
+    assert {g["id"]: g for g in client.get("/admin/api/games").json()["games"]}["t1"]["question"] == 0
 
 
 def test_login_survives_restart_and_expires(tmp_path, monkeypatch, app_module, client):
