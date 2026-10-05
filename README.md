@@ -50,3 +50,7 @@ docker run -d -p 80:8000 -e INPUT_PATH=<秘密の文字列> -v aql-data:/data aq
 ```
 
 SQLite を使うため、永続ディスクのあるホスト（VM・コンテナ＋ボリューム）で1台だけ動かす。
+
+## ライセンス
+
+MIT License（`LICENSE`）。同梱の `static/vendor/html-to-image-1.11.13.js` は html-to-image の MIT License（`static/vendor/html-to-image.LICENSE.txt`）に従う。
