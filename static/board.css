@@ -147,3 +147,13 @@ header.bar .hright { display: flex; align-items: center; gap: 12px; }
 .menu-panel .note { font-size: 11px; color: var(--muted); }
 /* 画像用に組み立てる要素は画面の外に置く */
 .shot-stage { position: fixed; left: -100000px; top: 0; }
+
+/* この画面の QR コード（閲覧画面の右上の「☰」メニュー） */
+.qrdlg { width: min(520px, calc(100% - 32px)); max-height: calc(100% - 32px); padding: 18px; text-align: center;
+  color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); }
+.qrdlg::backdrop { background: rgba(0, 0, 0, .6); }
+.qrdlg h2 { font-size: 17px; margin: 0 0 12px; overflow-wrap: anywhere; }
+.qrdlg .qrbox { width: min(100%, 62vh); margin: 0 auto; }
+.qrdlg .qrbox svg { display: block; width: 100%; height: auto; }
+.qrdlg .qrurl { margin: 10px 0 14px; font-size: 14px; color: var(--muted); overflow-wrap: anywhere; user-select: all; }
+.qrdlg button { min-height: 40px; padding: 0 24px; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-xs); cursor: pointer; }

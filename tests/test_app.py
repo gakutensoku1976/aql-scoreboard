@@ -394,3 +394,10 @@ def test_legacy_single_game_db_is_kept_aside(tmp_path, monkeypatch):
     names = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
     assert {"legacy_states", "legacy_settings", "games", "states", "settings"} <= names
     assert conn.execute("SELECT COUNT(*) FROM legacy_states").fetchone()[0] == 1
+
+
+def test_viewer_has_qr_menu_and_library(client):
+    html = client.get("/t1").text
+    assert 'id="qr"' in html and "QRコードを表示" in html
+    assert 'src="static/vendor/qrcode-generator-2.0.4.js"' in html
+    assert client.get("/static/vendor/qrcode-generator-2.0.4.js").status_code == 200
