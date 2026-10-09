@@ -78,6 +78,10 @@ SQLite を使うため、永続ディスクのあるホスト（VM・コンテ�
 uv run --no-project --with reportlab python tools/make_qr_pdf.py https://aql-sokuhou.q-koken.com/score/503-1 print/score_503-1.pdf "503会議室 第1試合"
 ```
 
+## 非機能試験
+
+負荷試験の結果と、運用上の目安（同時に閲覧できる人数・CPU クレジット・通信量）は `docs/nonfunctional-test.md` にまとめている。負荷試験のスクリプトは `tools/loadtest.py`（EC2 側の記録は `tools/loadtest_sample.sh`）。
+
 ## ライセンス
 
 MIT License（`LICENSE`）。同梱の `static/vendor/html-to-image-1.11.13.js` は html-to-image の MIT License（`static/vendor/html-to-image.LICENSE.txt`）に従う。
