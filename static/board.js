@@ -219,5 +219,30 @@ const Board = (() => {
     };
   }
 
-  return { render, poll, esc, bindTheme, bindLayout, bindShot, shotStage };
+  // 閲覧画面の URL を QR コードにして大きく出す（閲覧画面・入力画面で共用）。
+  // QR コードは同梱の qrcode-generator でブラウザ内で作る。ダイアログ（.qrdlg）は初回に作る
+  let qrDlg = null;
+  function showQr(url, title) {
+    if (!qrDlg) {
+      qrDlg = document.createElement("dialog");
+      qrDlg.className = "qrdlg";
+      qrDlg.setAttribute("aria-labelledby", "qrdlg-title");
+      qrDlg.innerHTML = '<h2 id="qrdlg-title"></h2><div class="qrbox" role="img"></div><p class="qrurl"></p><button type="button">閉じる</button>';
+      qrDlg.querySelector("button").onclick = () => qrDlg.close();
+      // 枠の外（背景）を押しても閉じる
+      qrDlg.addEventListener("click", (e) => { if (e.target === qrDlg) qrDlg.close(); });
+      document.body.appendChild(qrDlg);
+    }
+    const qr = qrcode(0, "M");
+    qr.addData(url);
+    qr.make();
+    const box = qrDlg.querySelector(".qrbox");
+    box.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 16, scalable: true });
+    box.setAttribute("aria-label", `QRコード：${url}`);
+    qrDlg.querySelector(".qrurl").textContent = url;
+    qrDlg.querySelector("h2").textContent = title;
+    qrDlg.showModal();
+  }
+
+  return { render, poll, esc, bindTheme, bindLayout, bindShot, shotStage, showQr };
 })();

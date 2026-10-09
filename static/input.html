@@ -23,6 +23,7 @@
     <button id="through">スルー（正解者なし）</button>
     <button id="undo">1つ取り消す</button>
     <span class="ops-right">
+      <button id="qr" type="button">表示画面QRコード</button>
       <a id="export" class="btn" download>試合記録をダウンロード（JSON）</a>
       <button id="shot" type="button">画像をコピー</button>
       <button id="reset" class="danger">試合をリセット</button>
@@ -87,6 +88,7 @@
   </div>
 </dialog>
 <script src="{{STATIC}}/vendor/html-to-image-1.11.13.js"></script>
+<script src="{{STATIC}}/vendor/qrcode-generator-2.0.4.js"></script>
 <script src="{{STATIC}}/board.js"></script>
 <script>
   const root = document.getElementById("root");
@@ -102,6 +104,10 @@
   // ログインが切れた（他の端末で試合が作り直された・期限切れ）・試合が削除されたときは読み直してログイン画面などへ
   const relogin = (status) => { location.reload(); return true; };
   document.getElementById("export").href = base + "/api/export";
+  // この試合の閲覧画面（…/input/<ID> → …/<ID>）の QR コード。見出しは閲覧画面と同じく試合名
+  document.getElementById("qr").onclick = () => Board.showQr(
+    location.origin + base.replace(/\/input\/([^/]+)$/, "/$1"),
+    (current && current.title) || "AQL 得点状況");
   let current = null;
 
   Board.bindTheme(document.getElementById("theme"));

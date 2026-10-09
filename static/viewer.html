@@ -42,12 +42,6 @@
     <div class="foot"></div>
   </div>
 </main>
-<dialog id="qrdlg" class="qrdlg" aria-labelledby="qrdlg-title">
-  <h2 id="qrdlg-title"></h2>
-  <div class="qrbox" id="qrbox" role="img"></div>
-  <p class="qrurl" id="qrurl"></p>
-  <button type="button" id="qrclose">閉じる</button>
-</dialog>
 <script src="{{STATIC}}/vendor/html-to-image-1.11.13.js"></script>
 <script src="{{STATIC}}/vendor/qrcode-generator-2.0.4.js"></script>
 <script src="{{STATIC}}/board.js"></script>
@@ -78,24 +72,11 @@
   const menu = document.getElementById("menu");
   document.getElementById("shot").addEventListener("click", () => { menu.open = false; });
 
-  // この閲覧画面の URL（クエリ・# は除く）を QR コードにして大きく出す。画像化はすべてブラウザ内
-  const qrDlg = document.getElementById("qrdlg");
+  // この閲覧画面の URL（クエリ・# は除く）を QR コードにして大きく出す
   document.getElementById("qr").onclick = () => {
     menu.open = false;
-    const url = location.origin + location.pathname;
-    const qr = qrcode(0, "M");
-    qr.addData(url);
-    qr.make();
-    const box = document.getElementById("qrbox");
-    box.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 16, scalable: true });
-    box.setAttribute("aria-label", `QRコード：${url}`);
-    document.getElementById("qrurl").textContent = url;
-    document.getElementById("qrdlg-title").textContent = h1.textContent;
-    qrDlg.showModal();
+    Board.showQr(location.origin + location.pathname, h1.textContent);
   };
-  document.getElementById("qrclose").onclick = () => qrDlg.close();
-  // 枠の外（背景）を押しても閉じる
-  qrDlg.addEventListener("click", (e) => { if (e.target === qrDlg) qrDlg.close(); });
   document.addEventListener("click", (e) => { if (menu.open && !menu.contains(e.target)) menu.open = false; });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") menu.open = false; });
 </script>
