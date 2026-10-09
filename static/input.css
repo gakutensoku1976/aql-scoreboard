@@ -74,7 +74,7 @@ header.bar .qcount { white-space: nowrap; }
 .footrow { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 8px; }
 .footrow .foot { margin: 0 0 0 auto; text-align: right; }
 .footrow #shotmsg { font-size: 12px; color: var(--muted); min-width: 0; }
-/* 「試合記録をダウンロード」「画像をコピー」「試合をリセット」を並べて右に寄せる */
+/* 「記録をダウンロード」「画像をコピー」「試合をリセット」を並べて右に寄せる */
 .ops .ops-right { margin-left: auto; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .ops .ops-right .danger { margin-left: 0; }
 .ops .btn { display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: var(--radius-s); border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-size: 15px; font-weight: 600; text-decoration: none; }

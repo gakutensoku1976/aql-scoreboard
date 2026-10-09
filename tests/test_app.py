@@ -405,6 +405,6 @@ def test_viewer_has_qr_menu_and_library(client):
 
 def test_input_has_viewer_qr_button(client):
     html = client.get("/input/t1").text
-    assert html.index('id="qr"') < html.index('id="export"')  # 「試合記録をダウンロード」の左
+    assert html.index('id="qr"') < html.index('id="export"')  # 「記録をダウンロード」の左
     assert "表示画面QRコード" in html
     assert 'src="../static/vendor/qrcode-generator-2.0.4.js"' in html
