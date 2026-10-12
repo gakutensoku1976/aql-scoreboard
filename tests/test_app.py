@@ -493,6 +493,7 @@ def test_manual_page_and_links(app_module, client):
     other = TestClient(app_module.app)
     r = other.get("/manual")
     assert r.status_code == 200 and "マニュアル" in r.text and 'href="static/board.css"' in r.text
+    assert "admin" not in r.text and "管理者" not in r.text  # 利用者向けなので管理者画面には触れない
     assert 'href="manual"' in other.get("/input").text  # 出題者の入口から
     assert 'href="../static/../manual"' in other.get("/input/t1").text  # 未ログインのログイン画面から
     assert 'href="../manual"' in client.get("/input/t1").text  # 入力画面から
