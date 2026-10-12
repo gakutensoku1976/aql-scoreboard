@@ -157,3 +157,6 @@ header.bar .hright { display: flex; align-items: center; gap: 12px; }
 .qrdlg .qrbox svg { display: block; width: 100%; height: auto; }
 .qrdlg .qrurl { margin: 10px 0 14px; font-size: 14px; color: var(--muted); overflow-wrap: anywhere; user-select: all; }
 .qrdlg button { min-height: 40px; padding: 0 24px; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-xs); cursor: pointer; }
+
+/* 入力画面・出題者の入口・ログイン画面からマニュアルへのリンク */
+.help { font-size: 13px; font-weight: 600; color: var(--team0); white-space: nowrap; }

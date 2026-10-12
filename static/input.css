@@ -102,3 +102,6 @@ details.fold > .names, details.fold > .display { margin: 10px 0 0; background: n
 .session { margin-top: 16px; display: flex; align-items: center; justify-content: flex-end; gap: 10px; font-size: 13px; color: var(--muted); }
 .session b { color: var(--ink); }
 .session button { min-height: 36px; padding: 0 14px; border-radius: var(--radius-s); border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-size: 14px; cursor: pointer; }
+/* 狭い画面では見出しの「マニュアル」を隠し（試合名の幅を確保）、一番下の行のリンクを使う */
+.session .help { margin-right: auto; }
+@media (max-width: 600px) { header.bar .help { display: none; } }

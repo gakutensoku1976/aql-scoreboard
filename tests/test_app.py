@@ -487,3 +487,13 @@ def test_trailing_slash_redirects_relatively(client):
         assert r.status_code == 308 and r.headers["location"] == loc, path
     assert client.get("/input/", follow_redirects=True).url.path == "/input"
     assert client.post("/input/t1/api/action/", json={"type": "through"}).status_code == 404  # POST は転送しない
+
+
+def test_manual_page_and_links(app_module, client):
+    other = TestClient(app_module.app)
+    r = other.get("/manual")
+    assert r.status_code == 200 and "マニュアル" in r.text and 'href="static/board.css"' in r.text
+    assert 'href="manual"' in other.get("/input").text  # 出題者の入口から
+    assert 'href="../static/../manual"' in other.get("/input/t1").text  # 未ログインのログイン画面から
+    assert 'href="../manual"' in client.get("/input/t1").text  # 入力画面から
+    assert "使えません" in create(client, "manual", "pass").json()["detail"]

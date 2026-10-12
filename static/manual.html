@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:,">
+<script>try{var t=localStorage.getItem("aql-scoreboard-theme");if(t)document.documentElement.dataset.theme=t;}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" crossorigin="anonymous" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Saira+Extra+Condensed:wght@500;700&display=swap">
+<link rel="stylesheet" href="{{STATIC}}/board.css">
+<link rel="stylesheet" href="{{STATIC}}/pages.css">
+<title>マニュアル | AQL 正誤入力・得点表示</title>
+</head>
+<body>
+<main class="wrap manual">
+  <header class="bar"><h1>AQL 正誤入力・得点表示 マニュアル</h1></header>
+
+  <p class="lead">AQL の2チーム戦で、出題者が正誤を入力し、参加者が得点状況（得点・リーチ・封鎖）を見るためのシステムです。部屋ごとに「試合」を作り、試合IDで分けて使います。</p>
+
+  <nav class="card toc" aria-label="目次">
+    <b>目次</b>
+    <ol>
+      <li><a href="#urls">画面と URL</a></li>
+      <li><a href="#start">試合を始めるまで</a></li>
+      <li><a href="#input">入力画面の使い方</a></li>
+      <li><a href="#settings">試合の設定</a></li>
+      <li><a href="#viewer">閲覧画面（参加者用）</a></li>
+      <li><a href="#rules">得点の決まりと画面の見方</a></li>
+      <li><a href="#trouble">困ったとき</a></li>
+      <li><a href="#admin">運営（管理者）向け</a></li>
+    </ol>
+  </nav>
+
+  <section class="card" id="urls">
+    <h2>1. 画面と URL</h2>
+    <table class="mtable">
+      <thead><tr><th>画面</th><th>URL</th><th>使う人</th></tr></thead>
+      <tbody>
+        <tr><td>出題者の入口</td><td><a href="input">…/score/input</a></td><td>出題者。既存の試合の入力画面へ移る／新しい試合を作る</td></tr>
+        <tr><td>入力画面</td><td>…/score/input/<i>試合ID</i></td><td>出題者。正誤を入力する（試合ごとの入力用パスワードが必要）</td></tr>
+        <tr><td>閲覧画面</td><td>…/score/<i>試合ID</i></td><td>参加者・観客。得点状況を見る（パスワード不要）</td></tr>
+        <tr><td>試合IDの入力欄</td><td><a href="./">…/score/</a></td><td>参加者。試合IDを入れて閲覧画面を開く</td></tr>
+        <tr><td>管理者画面</td><td>…/score/admin</td><td>運営。試合の一覧・作成・削除、作成用の合言葉の設定</td></tr>
+      </tbody>
+    </table>
+    <p class="note">「…」は <code>https://aql-sokuhou.q-koken.com</code> です。</p>
+  </section>
+
+  <section class="card" id="start">
+    <h2>2. 試合を始めるまで</h2>
+    <h3>2-1. 試合を作る（出題者）</h3>
+    <ol>
+      <li><a href="input">出題者の入口（…/score/input）</a>を開きます。</li>
+      <li>「新しい試合を作る」に次を入れて「作成して入力画面へ」を押します。
+        <ul>
+          <li><b>作成用の合言葉</b>：運営から案内されたもの</li>
+          <li><b>試合ID</b>：半角英数字と <code>-</code> <code>_</code> で32文字まで（例：<code>503-1</code>）。英字は小文字になります。ほかの試合と同じIDや、<code>admin</code>・<code>input</code>・<code>static</code>・<code>api</code>・<code>manual</code> は使えません</li>
+          <li><b>入力用パスワード</b>：4〜64文字。この試合の入力画面に入るときに使います。<b>作成後は確かめられないので、必ず控えてください</b></li>
+          <li><b>試合名</b>（任意）：例「503会議室 第1試合」。閲覧画面の見出しに出ます。あとから変えられます</li>
+        </ul>
+      </li>
+      <li>作成すると、そのままログインした状態で入力画面に移ります。</li>
+    </ol>
+    <p class="note">「いまは新しい試合を作れません」と出たときは、運営が作成を受け付けていません。運営に連絡してください。運営が管理者画面で試合を作ることもできます。</p>
+
+    <h3>2-2. 作成済みの試合の入力画面に入る</h3>
+    <ol>
+      <li>出題者の入口の「試合の入力画面へ」に試合IDを入れて「入力画面へ」を押します（または …/score/input/<i>試合ID</i> を直接開きます）。</li>
+      <li>その試合の入力用パスワードを入れて「ログイン」を押します。</li>
+    </ol>
+    <p class="note">ログインは24時間有効です。別の端末（予備のタブレットなど）からも同じパスワードで入れます。入力画面の一番下の「ログアウト」でログアウトできます。</p>
+
+    <h3>2-3. 参加者に閲覧画面を案内する</h3>
+    <p>入力画面の「<b>表示画面QRコード</b>」を押すと、その試合の閲覧画面の QR コードが大きく出ます。参加者に読み取ってもらうか、プロジェクターに映してください。閲覧画面の URL は …/score/<i>試合ID</i> です。</p>
+
+    <h3>2-4. 試合前の準備（必要に応じて）</h3>
+    <ul>
+      <li>チーム名・試合名を入れる（<a href="#settings">4. 試合の設定</a>）</li>
+      <li>参加者名を入れる。選手が座らない枠があれば「空席」にする（空席は試合開始前だけ設定できます）</li>
+      <li>閲覧画面に問題数・判定の記録を出すかを決める（初期はどちらも出しません）</li>
+    </ul>
+  </section>
+
+  <section class="card" id="input">
+    <h2>3. 入力画面の使い方</h2>
+    <h3>3-1. 正誤を入れる</h3>
+    <ul>
+      <li>各枠の <b class="ok">○</b>（正解）・<b class="ng">×</b>（誤答）を押します。1回押すと1問進みます。</li>
+      <li><b>スルー（正解者なし）</b>：誰も正解しなかった問題。問題数だけ進みます。</li>
+      <li><b>1つ取り消す</b>：直前の操作を取り消します。何回でも戻せます。押し間違えたときに使ってください（参加者名・試合名・勝利点などの変更も取り消しの対象です）。</li>
+      <li>封鎖中の枠と、試合が終わった後は ○× を押せません。</li>
+    </ul>
+    <h3>3-2. その他のボタン</h3>
+    <table class="mtable">
+      <tbody>
+        <tr><th>表示画面QRコード</th><td>この試合の閲覧画面の QR コードを大きく表示します。</td></tr>
+        <tr><th>記録をダウンロード</th><td>試合の記録（JSON ファイル）を保存します。試合名・ルール・勝敗・各枠の状態と、試合開始（最後のリセット）からの全判定（判定時刻と判定後の得点つき）が入ります。</td></tr>
+        <tr><th>画像をコピー</th><td>得点状況（見出し・勝敗・両チーム）を画像にしてコピーします。コピーできない端末では画像を保存します。判定の記録・○×ボタンは写りません。</td></tr>
+        <tr><th>試合をリセット</th><td>得点と判定の記録を消して、試合を最初からにします。確認画面で「試合記録をダウンロードしてリセット」「ダウンロードせずにリセット」「キャンセル」を選べます。チーム名・試合名・参加者名・空席・勝利点などの設定は残ります。</td></tr>
+      </tbody>
+    </table>
+    <p class="note">入力画面は1.5秒ごとに自動で更新されます。2台以上の端末で同じ試合を開いても、表示はそろいます。スマートフォンなど幅の狭い画面では、両チームの ○× と「スルー」「1つ取り消す」が1画面に収まるように詰めて表示します。</p>
+  </section>
+
+  <section class="card" id="settings">
+    <h2>4. 試合の設定（入力画面の下の欄）</h2>
+    <p>各欄は見出しを押すと開閉します。閉じているときも、見出しの右に今の設定が出ます。</p>
+    <table class="mtable">
+      <tbody>
+        <tr><th>参加者名を編集</th><td>1枠2名まで、1人あたり全角6文字（半角12文字）まで。チームごとに「…の参加者名を保存」を押します。長い名前は枠の中で横に縮めて表示します。</td></tr>
+        <tr><th>空席</th><td>参加者名の欄の各枠の「空席」にチェックを入れて保存すると、選手が座らない枠になります（練習・ハンデ戦用）。空席の枠は点線の空の枠で表示し、得点は1のまま動かず、リーチ・封鎖にもなりません。<b>試合開始前（リセットの直後）だけ</b>変更できます。全部の枠を空席にはできません。</td></tr>
+        <tr><th>試合名・チーム名</th><td>試合名（40文字まで）は閲覧画面・入力画面の見出しとタブ名に出ます。チーム名は空欄にすると変わりません。</td></tr>
+        <tr><th>オプションルール</th><td><b>勝利点を変更する</b>：チームごとに勝利点（2〜99999）を決めます（ハンデ戦など）。ON の間、得点は「現在点/勝利点」で表示します。試合の途中でも変えられますが、現在の得点以下にはできません。<br><b>40問で終了しない</b>：無効になった問題の分を続けて出題するときに使います。ON の間、規定の問題数を過ぎても試合は終わらず、問題数は「第n問」と表示します。</td></tr>
+        <tr><th>閲覧画面に表示する項目</th><td>「問題数」「判定の記録」を閲覧画面に出すかどうか。<b>初期はどちらも出しません</b>。出さない項目は閲覧画面の通信にも含まれません（入力画面には常に出ます）。</td></tr>
+        <tr><th>この端末の入力画面</th><td>チームの左右入れ替え、チームごとに枠を5→1の順に並べる、表示モード（ライト／ダーク／SportsManiax）。席の並びに合わせるための設定で、この端末だけに保存されます。並べ替えても枠番と入力先は変わりません。</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="card" id="viewer">
+    <h2>5. 閲覧画面（参加者用）</h2>
+    <ul>
+      <li>1.5秒ごとに自動で更新されます。読み込み直す必要はありません。右下に最後に更新した時刻が出ます。</li>
+      <li>右上の「☰」メニューでできること：
+        <ul>
+          <li><b>画像をコピー</b>：得点状況を画像にしてコピー（できない端末では保存）</li>
+          <li><b>チームの左右を入れ替え</b>・<b>枠を5→1</b>：自分の席から見た並びに合わせる（この端末だけ）</li>
+          <li><b>表示モード</b>：ライト／ダーク／SportsManiax（この端末だけ）</li>
+          <li><b>QRコードを表示</b>：この閲覧画面の QR コード。周りの人に共有するときに使います</li>
+        </ul>
+      </li>
+      <li>「試合が見つかりません」と出るときは、試合IDの間違いか、試合が削除されています。</li>
+    </ul>
+  </section>
+
+  <section class="card" id="rules">
+    <h2>6. 得点の決まりと画面の見方</h2>
+    <ul>
+      <li><b>チームの得点</b>＝5つの枠の得点の<b>積</b>。各枠は1点から始まります。</li>
+      <li><b>正解</b>：その枠の得点が＋1。</li>
+      <li><b>誤答</b>：その枠の得点が1に戻り、× が1つ付きます。<b>×2つで封鎖</b>（その枠は答えられない）。誤答すると、相手チームの封鎖中の枠は ×1 に戻ります。</li>
+      <li><b>勝敗</b>：勝利点（通常200点）に先に届いたチームの勝ち。相手の全部の枠（空席を除く）が封鎖されても勝ち。規定の問題数（40問）を終えたら得点の高いほうの勝ち（同点は引き分け）。</li>
+    </ul>
+    <p>枠の見た目（文字は出さず、色と模様で示します）：</p>
+    <div class="samples">
+      <figure><div class="seat"><div class="pt">3</div><div class="x"></div></div><figcaption>通常</figcaption></figure>
+      <figure><div class="seat reach"><div class="pt">4</div><div class="x"></div></div><figcaption>リーチ（次に正解すると勝ち）：黄色の塗りと太い枠</figcaption></figure>
+      <figure><div class="seat"><div class="pt">1</div><div class="x">×</div></div><figcaption>×1つ</figcaption></figure>
+      <figure><div class="seat locked"><div class="pt">1</div><div class="x">××</div></div><figcaption>封鎖：斜線</figcaption></figure>
+      <figure><div class="seat vacant"></div><figcaption>空席：点線の空の枠</figcaption></figure>
+    </div>
+    <p class="note">試合が終わると、見出しの下に勝敗と理由（200点到達・全枠封鎖・40問終了など）が出ます。試合が終わった後はリーチの表示は出ません。</p>
+  </section>
+
+  <section class="card" id="trouble">
+    <h2>7. 困ったとき</h2>
+    <table class="mtable">
+      <tbody>
+        <tr><th>押し間違えた</th><td>「1つ取り消す」で直前の操作を戻せます。</td></tr>
+        <tr><th>入力用パスワードを忘れた</th><td>確かめる方法はありません。運営に試合を削除してもらい、作り直してください（記録が要るときは、先に「記録をダウンロード」を）。</td></tr>
+        <tr><th>「パスワードを続けて間違えたため…」と出た</th><td>5回続けて間違えると30秒受け付けません。少し待ってから入れ直してください（合言葉も同じ）。</td></tr>
+        <tr><th>急にログイン画面になった</th><td>ログインの期限（24時間）が切れたか、試合が削除・作り直しされました。パスワードを入れ直してください。</td></tr>
+        <tr><th>「接続できません。再試行しています…」と出る</th><td>通信が切れています。自動でやり直すので、通信が戻れば表示も戻ります。</td></tr>
+        <tr><th>閲覧画面に問題数や判定の記録が出ない</th><td>初期は出さない設定です。出す場合は入力画面の「閲覧画面に表示する項目」でチェックを入れます。</td></tr>
+        <tr><th>空席のチェックが押せない</th><td>空席は試合開始前だけ変えられます。リセットしてから設定してください。</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="card" id="admin">
+    <h2>8. 運営（管理者）向け</h2>
+    <ul>
+      <li>管理者画面（…/score/admin）は管理者パスワードでログインします。</li>
+      <li><b>試合の作成</b>：試合ID・入力用パスワード・試合名で作ります。作った試合の入力用パスワードを出題者に伝えてください。</li>
+      <li><b>作成用の合言葉</b>：設定すると、出題者が出題者の入口で試合を作れるようになります（全体で100件まで）。「受け付けを止める」で合言葉を消すと作れなくなります（作成済みの試合は残ります）。合言葉は保存後に確かめられません。</li>
+      <li><b>試合の一覧</b>：試合ID・作成者（管理者／出題者）・試合名・対戦と得点・問題数・状況・作成日時と、閲覧画面・入力画面へのリンク。5秒ごとに更新します。</li>
+      <li><b>削除</b>：その試合の得点・記録・設定をすべて消します。元に戻せません。</li>
+      <li>同時に使える規模の目安：全試合の合計で閲覧者約300人まで（6部屋×30人で余裕があることを確認済み）。</li>
+    </ul>
+  </section>
+
+  <p class="note back"><a href="input">出題者の入口へ</a>　<a href="./">試合IDを入力して閲覧画面へ</a></p>
+</main>
+</body>
+</html>

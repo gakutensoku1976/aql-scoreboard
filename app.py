@@ -5,6 +5,7 @@ URL（本番では先頭に /score が付く）
   /<ID>         閲覧画面（認証なし）
   /input        出題者の入口（既存の試合の入力画面へ移る／作成用の合言葉で新しい試合を作る）
   /input/<ID>   入力画面（試合ごとのパスワードでログイン）
+  /manual       マニュアル（出題者の入口・入力画面からリンク）
   /admin        管理者画面（試合の作成・一覧・削除。ADMIN_PASSWORD でログイン）
 
 環境変数
@@ -153,7 +154,7 @@ def snapshot(gid, full):
 
 # ===== 試合（作成・一覧・削除） =====
 ID_RE = re.compile(r"^[a-z0-9_-]{1,32}$")
-RESERVED = {"admin", "input", "static", "api"}
+RESERVED = {"admin", "input", "static", "api", "manual"}
 PW_MIN, PW_MAX = 4, 64
 
 
@@ -392,6 +393,11 @@ async def trailing_slash(request, call_next):
 @app.get("/")
 def index_page():
     return page("index.html", "static")
+
+
+@app.get("/manual")
+def manual_page():
+    return page("manual.html", "static")
 
 
 # --- 管理者 ---
