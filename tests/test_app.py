@@ -498,3 +498,65 @@ def test_manual_page_and_links(app_module, client):
     assert 'href="../static/../manual"' in other.get("/input/t1").text  # 未ログインのログイン画面から
     assert 'href="../manual"' in client.get("/input/t1").text  # 入力画面から
     assert "使えません" in create(client, "manual", "pass").json()["detail"]
+
+
+# ===== 最終得点入力日時（管理者画面の一覧） =====
+
+def _last_input(client, gid="t1"):
+    return {g["id"]: g for g in client.get("/admin/api/games").json()["games"]}[gid]["last_input_at"]
+
+
+def test_last_input_at_updates_on_judgements_only(client):
+    assert _last_input(client) is None  # 作成直後は入力なし
+    post(client, type="rename", title="第1試合", names=["", ""])
+    post(client, type="display", show_log=True)
+    assert _last_input(client) is None  # 設定の変更は得点の入力ではない
+    post(client, type="correct", team=0, seat=0)
+    first = _last_input(client)
+    assert first and first.endswith("+09:00")
+    assert first == client.get("/input/t1/api/export").json()["log"][-1]["at"]
+    for kind in ({"type": "wrong", "team": 1, "seat": 0}, {"type": "through"}):
+        post(client, **kind)
+        assert _last_input(client) >= first
+
+
+def test_last_input_at_kept_on_undo_and_reset(client):
+    post(client, type="correct", team=0, seat=0)
+    t = _last_input(client)
+    post(client, type="undo")
+    post(client, type="reset")
+    assert _last_input(client) == t  # 取り消し・リセットでは戻さない（最後に使われた時刻）
+    assert post(client, type="correct", team=0, seat=0).status_code == 200
+    assert _last_input(client) >= t  # リセット後の入力で新しくなる
+
+
+def test_last_input_at_rejected_judgement_does_not_count(client):
+    post(client, type="wrong", team=1, seat=0)
+    post(client, type="wrong", team=1, seat=0)
+    t = _last_input(client)
+    assert post(client, type="correct", team=1, seat=0).status_code == 409  # 封鎖中の枠
+    assert _last_input(client) == t
+
+
+def test_last_input_at_filled_for_existing_games(tmp_path, monkeypatch):
+    import json as _json
+    import sqlite3
+    conn = sqlite3.connect(tmp_path / "t.db")
+    conn.execute("CREATE TABLE games (id TEXT PRIMARY KEY, pw_hash TEXT NOT NULL, created_at TEXT NOT NULL, created_by TEXT NOT NULL DEFAULT 'admin')")
+    conn.execute("CREATE TABLE states (id INTEGER PRIMARY KEY AUTOINCREMENT, game_id TEXT NOT NULL, body TEXT NOT NULL)")
+    for gid, log in (("used", [{"q": 1, "kind": "through", "at": "2026-10-05T10:00:00+09:00"},
+                               {"q": 2, "kind": "through", "at": "2026-10-05T10:01:00+09:00"}]),
+                     ("unused", []), ("old", [{"q": 1, "kind": "through"}])):
+        conn.execute("INSERT INTO games (id, pw_hash, created_at) VALUES (?, 'scrypt$00$00', '2026-10-05T09:00:00+09:00')", (gid,))
+        conn.execute("INSERT INTO states (game_id, body) VALUES (?, ?)", (gid, _json.dumps({"log": log})))
+    conn.commit()
+    conn.close()
+    m = load_app(tmp_path, monkeypatch)
+    with m._conn() as c:
+        got = dict(c.execute("SELECT id, last_input_at FROM games").fetchall())
+    assert got == {"used": "2026-10-05T10:01:00+09:00", "unused": None, "old": None}
+
+
+def test_admin_page_has_sort_and_last_input_column(client):
+    html = client.get("/admin").text
+    assert "最終得点入力が古い順" in html and "<th>最終得点入力</th>" in html

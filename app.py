@@ -74,6 +74,15 @@ def _conn():
             # 誰が作った試合か（admin=管理者画面、input=出題者の入口で合言葉を使って作成）
             if "created_by" not in [r[1] for r in conn.execute("PRAGMA table_info(games)")]:
                 conn.execute("ALTER TABLE games ADD COLUMN created_by TEXT NOT NULL DEFAULT 'admin'")
+            # 最後に得点を入力（○・×・スルー）した時刻。リセット・取り消しでは戻さない（削除の判断に使う）
+            if "last_input_at" not in [r[1] for r in conn.execute("PRAGMA table_info(games)")]:
+                conn.execute("ALTER TABLE games ADD COLUMN last_input_at TEXT")
+                # 既存の試合は、今の判定の記録に残る最後の時刻から始める
+                for (gid,) in conn.execute("SELECT id FROM games").fetchall():
+                    row = conn.execute("SELECT body FROM states WHERE game_id = ? ORDER BY id DESC LIMIT 1", (gid,)).fetchone()
+                    ats = [e["at"] for e in json.loads(row[0]).get("log", []) if e.get("at")] if row else []
+                    if ats:
+                        conn.execute("UPDATE games SET last_input_at = ? WHERE id = ?", (max(ats), gid))
         _ready = True
     return conn
 
@@ -213,13 +222,13 @@ def delete_game(gid):
 
 def list_games():
     with _conn() as conn:
-        rows = conn.execute("SELECT id, created_at, created_by FROM games ORDER BY created_at, id").fetchall()
+        rows = conn.execute("SELECT id, created_at, created_by, last_input_at FROM games ORDER BY created_at, id").fetchall()
     out = []
-    for gid, created, created_by in rows:
+    for gid, created, created_by, last_input in rows:
         v = game.view(load(gid)[0])
         res = v["result"]
         out.append({
-            "id": gid, "created_at": created, "created_by": created_by, "title": v["title"],
+            "id": gid, "created_at": created, "created_by": created_by, "last_input_at": last_input, "title": v["title"],
             "teams": [{"name": t["name"], "score": t["score"]} for t in v["teams"]],
             "question": v["question"], "max_questions": v["max_questions"], "no_question_limit": v["no_question_limit"],
             "result": None if res is None else {**res, "winner_name": None if res["winner"] is None else v["teams"][res["winner"]]["name"]},
@@ -566,6 +575,12 @@ def get_full_state(gid: str = Depends(require_input)):
     return snapshot(gid, full=True)
 
 
+def touch_input(gid, state):
+    """得点の入力（○・×・スルー）の時刻を試合に記録する。"""
+    with _conn() as conn:
+        conn.execute("UPDATE games SET last_input_at = ? WHERE id = ?", (state["log"][-1]["at"], gid))
+
+
 def annotate_last(prev, new):
     """判定で記録が1件増えたとき、その記録に判定時刻と判定後の両チームの得点を付ける。"""
     if len(new["log"]) > len(prev["log"]):
@@ -580,12 +595,14 @@ def act(a: Action, gid: str = Depends(require_input)):
     with _lock:
         try:
             state, _ = load(gid)
-            if a.type == "correct":
-                push(gid, annotate_last(state, game.correct(state, a.team, a.seat)))
-            elif a.type == "wrong":
-                push(gid, annotate_last(state, game.wrong(state, a.team, a.seat)))
-            elif a.type == "through":
-                push(gid, annotate_last(state, game.through(state)))
+            if a.type in ("correct", "wrong", "through"):
+                if a.type == "through":
+                    new = game.through(state)
+                else:
+                    new = getattr(game, a.type)(state, a.team, a.seat)
+                new = annotate_last(state, new)
+                push(gid, new)
+                touch_input(gid, new)
             elif a.type == "rename":
                 push(gid, game.rename(state, a.names or [], a.title))
             elif a.type == "targets":

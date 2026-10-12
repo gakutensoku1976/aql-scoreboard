@@ -44,9 +44,11 @@
     <p class="note">合言葉を設定すると、出題者が <a id="entrylink" target="_blank" rel="noopener">出題者の入口</a> で合言葉を入れて試合を作れます（全体で100件まで）。合言葉は保存後に確かめられないので、出題者に伝えてから画面を閉じてください。「受け付けを止める」で合言葉を消すと作成できなくなります（作成済みの試合はそのまま）。</p>
   </form>
   <section class="card">
-    <h2>試合の一覧</h2>
+    <div class="listhead"><h2>試合の一覧</h2>
+      <label class="theme">並び順 <select id="sort"><option value="created">作成順</option><option value="stale">最終得点入力が古い順</option></select></label>
+    </div>
     <table class="games">
-      <thead><tr><th>試合ID</th><th>作成</th><th>試合名</th><th>対戦</th><th>問題数</th><th>状況</th><th>作成日時</th><th>画面</th><th></th></tr></thead>
+      <thead><tr><th>試合ID</th><th>作成</th><th>試合名</th><th>対戦</th><th>問題数</th><th>状況</th><th>最終得点入力</th><th>作成日時</th><th>画面</th><th></th></tr></thead>
       <tbody id="list"></tbody>
     </table>
   </section>
@@ -82,7 +84,27 @@
     if (g.result) return g.result.winner === null ? `引き分け（${esc(g.result.reason)}）` : `${esc(g.result.winner_name)} 勝利（${esc(g.result.reason)}）`;
     return g.question === 0 ? "開始前" : "試合中";
   }
+  // 経過時間（「3日前」など）
+  function ago(iso) {
+    const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+    if (m < 1) return "たった今";
+    if (m < 60) return `${m}分前`;
+    if (m < 60 * 24) return `${Math.floor(m / 60)}時間前`;
+    return `${Math.floor(m / 60 / 24)}日前`;
+  }
+  // 並び順（この端末に保存）。「古い順」は最終得点入力の時刻、入力のない試合は作成日時で比べる
+  const SORT_KEY = "aql-scoreboard-admin-sort";
+  const sortSel = document.getElementById("sort");
+  try { sortSel.value = localStorage.getItem(SORT_KEY) || "created"; } catch {}
+  let lastGames = [];
+  sortSel.onchange = () => {
+    try { localStorage.setItem(SORT_KEY, sortSel.value); } catch {}
+    render(lastGames);
+  };
+  const staleKey = (g) => new Date(g.last_input_at || g.created_at).getTime();
   function render(games) {
+    lastGames = games;
+    if (sortSel.value === "stale") games = games.slice().sort((a, b) => staleKey(a) - staleKey(b) || a.id.localeCompare(b.id));
     const root = base.replace(/admin$/, "");  // 閲覧・入力画面のリンクの起点（…/score/）
     document.getElementById("list").innerHTML = games.length ? games.map((g) => {
       const id = encodeURIComponent(g.id);
@@ -90,10 +112,12 @@
       const by = g.created_by === "input" ? '<span class="by input">出題者</span>' : '<span class="by">管理者</span>';
       return `<tr><td class="id">${esc(g.id)}</td><td>${by}</td><td>${esc(g.title) || "—"}</td>` +
         `<td>${esc(g.teams[0].name)} <b>${g.teams[0].score}</b> 対 <b>${g.teams[1].score}</b> ${esc(g.teams[1].name)}</td>` +
-        `<td class="num">${q}</td><td>${status(g)}</td><td class="num">${fmt(g.created_at)}</td>` +
+        `<td class="num">${q}</td><td>${status(g)}</td>` +
+        `<td class="num">${g.last_input_at ? `${fmt(g.last_input_at)} <small class="ago">${ago(g.last_input_at)}</small>` : '<small class="ago">入力なし</small>'}</td>` +
+        `<td class="num">${fmt(g.created_at)}</td>` +
         `<td class="links"><a href="${root}${id}" target="_blank" rel="noopener">閲覧</a><a href="${root}input/${id}" target="_blank" rel="noopener">入力</a></td>` +
         `<td><button class="btn2 danger" type="button" data-del="${esc(g.id)}">削除</button></td></tr>`;
-    }).join("") : '<tr><td class="empty" colspan="9">まだ試合がありません</td></tr>';
+    }).join("") : '<tr><td class="empty" colspan="10">まだ試合がありません</td></tr>';
   }
 
   const foot = document.querySelector(".foot");
