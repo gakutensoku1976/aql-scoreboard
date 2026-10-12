@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:,">
+<script>try{var t=localStorage.getItem("aql-scoreboard-theme");if(t)document.documentElement.dataset.theme=t;}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" crossorigin="anonymous" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Saira+Extra+Condensed:wght@500;700&display=swap">
+<link rel="stylesheet" href="{{STATIC}}/board.css">
+<link rel="stylesheet" href="{{STATIC}}/pages.css">
+<title>出題者の入口 | AQL</title>
+</head>
+<body>
+<main class="wrap narrow">
+  <header class="bar"><h1>AQL 正誤入力</h1></header>
+  <form class="card" id="go">
+    <h2>試合の入力画面へ</h2>
+    <label for="gid">試合ID</label>
+    <div class="line">
+      <input id="gid" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="32" placeholder="例：503-1" required>
+      <button type="submit">入力画面へ</button>
+    </div>
+    <p class="note">作成済みの試合です。次の画面で、その試合の入力用パスワードを入れます。</p>
+  </form>
+  <form class="card" id="create">
+    <h2>新しい試合を作る</h2>
+    <div class="fields">
+      <label class="field">作成用の合言葉（運営から案内されたもの）<input id="code" type="password" maxlength="64" autocomplete="off" required></label>
+      <label class="field">試合ID（半角英数字と - _、32文字まで）<input id="nid" maxlength="32" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="例：503-1" required></label>
+      <label class="field">入力用パスワード（4〜64文字。この試合の入力画面に入るときに使う）<input id="npw" maxlength="64" autocomplete="off" autocapitalize="off" spellcheck="false" required></label>
+      <label class="field">試合名（任意。入力画面で変更可）<input id="ntitle" maxlength="40" placeholder="例：503会議室 第1試合"></label>
+    </div>
+    <div class="acts"><button type="submit">作成して入力画面へ</button></div>
+    <p class="msg" id="msg" role="alert"></p>
+    <p class="note">入力用パスワードは作成後に確かめられません。控えてから作成してください。作成するとそのまま入力画面にログインします。</p>
+  </form>
+</main>
+<script>
+  // この画面は …/input にある。入力画面は …/input/<ID>
+  const base = location.pathname.replace(/\/$/, "");
+  const go = (id) => { location.href = `${base}/${encodeURIComponent(id)}`; };
+  document.getElementById("go").onsubmit = (e) => {
+    e.preventDefault();
+    const id = document.getElementById("gid").value.trim().toLowerCase();
+    if (id) go(id);
+  };
+  const msg = document.getElementById("msg");
+  document.getElementById("create").onsubmit = async (e) => {
+    e.preventDefault();
+    msg.textContent = "";
+    const body = { code: document.getElementById("code").value, id: document.getElementById("nid").value.trim().toLowerCase(),
+                   password: document.getElementById("npw").value, title: document.getElementById("ntitle").value };
+    try {
+      const r = await fetch(base, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const data = await r.json();
+      if (!r.ok) { msg.textContent = data.detail || "作成できませんでした"; return; }
+      go(data.id);
+    } catch {
+      msg.textContent = "接続できません";
+    }
+  };
+</script>
+</body>
+</html>

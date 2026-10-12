@@ -32,10 +32,21 @@
     <p class="msg" id="msg" role="status"></p>
     <p class="note">パスワードは作成後に確かめられません。出題者に伝えてから画面を閉じてください（忘れた場合は試合を削除して作り直します）。</p>
   </form>
+  <form class="card" id="codeform">
+    <h2>出題者による試合の作成（作成用の合言葉）</h2>
+    <p class="codestate" id="codestate"></p>
+    <div class="line">
+      <input id="newcode" maxlength="64" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="新しい合言葉（4〜64文字）" required>
+      <button class="btn2" type="submit">合言葉を設定</button>
+      <button class="btn2 danger" type="button" id="clearcode">受け付けを止める</button>
+    </div>
+    <p class="msg" id="codemsg" role="status"></p>
+    <p class="note">合言葉を設定すると、出題者が <a id="entrylink" target="_blank" rel="noopener">出題者の入口</a> で合言葉を入れて試合を作れます（全体で100件まで）。合言葉は保存後に確かめられないので、出題者に伝えてから画面を閉じてください。「受け付けを止める」で合言葉を消すと作成できなくなります（作成済みの試合はそのまま）。</p>
+  </form>
   <section class="card">
     <h2>試合の一覧</h2>
     <table class="games">
-      <thead><tr><th>試合ID</th><th>試合名</th><th>対戦</th><th>問題数</th><th>状況</th><th>作成</th><th>画面</th><th></th></tr></thead>
+      <thead><tr><th>試合ID</th><th>作成</th><th>試合名</th><th>対戦</th><th>問題数</th><th>状況</th><th>作成日時</th><th>画面</th><th></th></tr></thead>
       <tbody id="list"></tbody>
     </table>
   </section>
@@ -76,12 +87,13 @@
     document.getElementById("list").innerHTML = games.length ? games.map((g) => {
       const id = encodeURIComponent(g.id);
       const q = g.no_question_limit ? `第${g.question}問` : `${g.question} / ${g.max_questions}`;
-      return `<tr><td class="id">${esc(g.id)}</td><td>${esc(g.title) || "—"}</td>` +
+      const by = g.created_by === "input" ? '<span class="by input">出題者</span>' : '<span class="by">管理者</span>';
+      return `<tr><td class="id">${esc(g.id)}</td><td>${by}</td><td>${esc(g.title) || "—"}</td>` +
         `<td>${esc(g.teams[0].name)} <b>${g.teams[0].score}</b> 対 <b>${g.teams[1].score}</b> ${esc(g.teams[1].name)}</td>` +
         `<td class="num">${q}</td><td>${status(g)}</td><td class="num">${fmt(g.created_at)}</td>` +
         `<td class="links"><a href="${root}${id}" target="_blank" rel="noopener">閲覧</a><a href="${root}input/${id}" target="_blank" rel="noopener">入力</a></td>` +
         `<td><button class="btn2 danger" type="button" data-del="${esc(g.id)}">削除</button></td></tr>`;
-    }).join("") : '<tr><td class="empty" colspan="8">まだ試合がありません</td></tr>';
+    }).join("") : '<tr><td class="empty" colspan="9">まだ試合がありません</td></tr>';
   }
 
   const foot = document.querySelector(".foot");
@@ -129,6 +141,33 @@
       say(`試合「${target}」を削除しました`, true);
     } catch (err) { say(err.message); }
   });
+  // 作成用の合言葉
+  const codeMsg = document.getElementById("codemsg");
+  const sayCode = (text, ok) => { codeMsg.textContent = text; codeMsg.classList.toggle("ok", !!ok); };
+  document.getElementById("entrylink").href = base.replace(/admin$/, "input");
+  function showCode(st) {
+    document.getElementById("codestate").textContent = st.set
+      ? `受け付け中（合言葉は ${fmt(st.updated_at)} に設定）` : "受け付けていません（合言葉が未設定）";
+    document.getElementById("codestate").classList.toggle("on", st.set);
+    document.getElementById("clearcode").disabled = !st.set;
+  }
+  call("GET", base + "/api/create-code").then(showCode).catch((err) => sayCode(err.message));
+  document.getElementById("codeform").onsubmit = async (e) => {
+    e.preventDefault();
+    const code = document.getElementById("newcode").value;
+    try {
+      showCode(await call("PUT", base + "/api/create-code", { code }));
+      sayCode(`合言葉を「${code}」に設定しました`, true);
+      document.getElementById("newcode").value = "";
+    } catch (err) { sayCode(err.message); }
+  };
+  document.getElementById("clearcode").onclick = async () => {
+    try {
+      showCode(await call("DELETE", base + "/api/create-code"));
+      sayCode("出題者による作成の受け付けを止めました", true);
+    } catch (err) { sayCode(err.message); }
+  };
+
   document.getElementById("logout").onclick = async () => {
     await fetch(base + "/logout", { method: "POST" }).catch(() => {});
     location.reload();

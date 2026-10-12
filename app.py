@@ -3,6 +3,7 @@
 URL（本番では先頭に /score が付く）
   /             試合IDを入れて閲覧画面へ
   /<ID>         閲覧画面（認証なし）
+  /input        出題者の入口（既存の試合の入力画面へ移る／作成用の合言葉で新しい試合を作る）
   /input/<ID>   入力画面（試合ごとのパスワードでログイン）
   /admin        管理者画面（試合の作成・一覧・削除。ADMIN_PASSWORD でログイン）
 
@@ -26,7 +27,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -69,6 +70,9 @@ def _conn():
             conn.execute("CREATE INDEX IF NOT EXISTS states_game ON states (game_id, id)")
             conn.execute("CREATE TABLE IF NOT EXISTS settings (game_id TEXT PRIMARY KEY, rev INTEGER NOT NULL, body TEXT NOT NULL)")
             conn.execute("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+            # 誰が作った試合か（admin=管理者画面、input=出題者の入口で合言葉を使って作成）
+            if "created_by" not in [r[1] for r in conn.execute("PRAGMA table_info(games)")]:
+                conn.execute("ALTER TABLE games ADD COLUMN created_by TEXT NOT NULL DEFAULT 'admin'")
         _ready = True
     return conn
 
@@ -175,7 +179,7 @@ def verify_password(pw, stored):
     return hmac.compare_digest(got.hex(), h)
 
 
-def create_game(gid, pw, title=""):
+def create_game(gid, pw, title="", created_by="admin"):
     gid = norm_id(gid)
     if not ID_RE.match(gid):
         raise game.RuleError("試合IDは半角英数字と - _ で1〜32文字にしてください")
@@ -189,8 +193,10 @@ def create_game(gid, pw, title=""):
             raise game.RuleError(f"試合ID「{gid}」はすでにあります")
         conn.execute("DELETE FROM states WHERE game_id = ?", (gid,))
         conn.execute("DELETE FROM settings WHERE game_id = ?", (gid,))
-        conn.execute("INSERT INTO games (id, pw_hash, created_at) VALUES (?, ?, ?)",
-                     (gid, hash_password(pw), now_jst().isoformat()))
+        if created_by != "admin" and conn.execute("SELECT COUNT(*) FROM games").fetchone()[0] >= MAX_GAMES:
+            raise game.RuleError(f"試合の数が上限（{MAX_GAMES}件）に達しています。運営に連絡してください")
+        conn.execute("INSERT INTO games (id, pw_hash, created_at, created_by) VALUES (?, ?, ?, ?)",
+                     (gid, hash_password(pw), now_jst().isoformat(), created_by))
         conn.execute("INSERT INTO states (game_id, body) VALUES (?, ?)", (gid, json.dumps(body, ensure_ascii=False)))
     return gid
 
@@ -206,18 +212,49 @@ def delete_game(gid):
 
 def list_games():
     with _conn() as conn:
-        rows = conn.execute("SELECT id, created_at FROM games ORDER BY created_at, id").fetchall()
+        rows = conn.execute("SELECT id, created_at, created_by FROM games ORDER BY created_at, id").fetchall()
     out = []
-    for gid, created in rows:
+    for gid, created, created_by in rows:
         v = game.view(load(gid)[0])
         res = v["result"]
         out.append({
-            "id": gid, "created_at": created, "title": v["title"],
+            "id": gid, "created_at": created, "created_by": created_by, "title": v["title"],
             "teams": [{"name": t["name"], "score": t["score"]} for t in v["teams"]],
             "question": v["question"], "max_questions": v["max_questions"], "no_question_limit": v["no_question_limit"],
             "result": None if res is None else {**res, "winner_name": None if res["winner"] is None else v["teams"][res["winner"]]["name"]},
         })
     return out
+
+
+# ===== 作成用の合言葉（出題者が /input で試合を作るため） =====
+# 管理者画面で設定・変更・解除する。ハッシュだけを meta に置く。未設定なら出題者は作成できない
+MAX_GAMES = 100  # 出題者が作れる上限（全試合の数で数える。管理者の作成には効かない）
+CODE_KEY = "create_code"
+
+
+def create_code():
+    """{"hash": ..., "updated_at": ...} または None。"""
+    with _conn() as conn:
+        row = conn.execute("SELECT value FROM meta WHERE key = ?", (CODE_KEY,)).fetchone()
+    return json.loads(row[0]) if row else None
+
+
+def set_create_code(code):
+    if code is None:
+        with _conn() as conn:
+            conn.execute("DELETE FROM meta WHERE key = ?", (CODE_KEY,))
+        return
+    if not PW_MIN <= len(code) <= PW_MAX:
+        raise game.RuleError(f"合言葉は{PW_MIN}〜{PW_MAX}文字にしてください")
+    value = json.dumps({"hash": hash_password(code), "updated_at": now_jst().isoformat()})
+    with _conn() as conn:
+        conn.execute("INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                     (CODE_KEY, value))
+
+
+def code_status():
+    c = create_code()
+    return {"set": c is not None, "updated_at": c["updated_at"] if c else None}
 
 
 # ===== ログイン（署名付き Cookie） =====
@@ -322,7 +359,7 @@ def page(name, static_prefix, status_code=200):
     return HTMLResponse(html, status_code=status_code)
 
 
-app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None, redirect_slashes=False)
 
 
 @app.middleware("http")
@@ -336,6 +373,20 @@ app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
 class Login(BaseModel):
     password: str = ""
+
+
+@app.middleware("http")
+async def trailing_slash(request, call_next):
+    """末尾の / を外した URL へ、相対パスで転送する（/score の下でも外へ出ない）。
+    FastAPI の自動の転送は前に付くパス（/score）を落とした絶対 URL にしてしまうので使わない。"""
+    path = request.url.path
+    if path != "/" and path.endswith("/") and request.method in ("GET", "HEAD"):
+        name = path.rstrip("/").rsplit("/", 1)[-1]
+        if name:
+            n = len(path) - len(path.rstrip("/"))
+            query = f"?{request.url.query}" if request.url.query else ""
+            return RedirectResponse("../" * n + name + query, status_code=308)
+    return await call_next(request)
 
 
 @app.get("/")
@@ -399,6 +450,61 @@ def admin_delete(game_id: str):
         if not delete_game(norm_id(game_id)):
             raise HTTPException(status_code=404, detail="試合が見つかりません")
     return {"games": list_games()}
+
+
+class CreateCode(BaseModel):
+    code: str = ""
+
+
+@app.get("/admin/api/create-code", dependencies=[Depends(require_admin)])
+def admin_code_status():
+    return code_status()
+
+
+@app.put("/admin/api/create-code", dependencies=[Depends(require_admin)])
+def admin_set_code(body: CreateCode):
+    try:
+        set_create_code(body.code)
+    except game.RuleError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    return code_status()
+
+
+@app.delete("/admin/api/create-code", dependencies=[Depends(require_admin)])
+def admin_clear_code():
+    set_create_code(None)
+    return code_status()
+
+
+# --- 出題者の入口（既存の試合へ／合言葉で新しい試合を作る） ---
+@app.get("/input")
+def input_entry_page():
+    return page("input_entry.html", "static")
+
+
+class UserNewGame(NewGame):
+    code: str = ""
+
+
+@app.post("/input")
+def input_create(body: UserNewGame):
+    """合言葉が合えば試合を作り、そのままその試合の入力画面にログインした状態にする。"""
+    c = create_code()
+    if c is None:
+        raise HTTPException(status_code=403, detail="いまは新しい試合を作れません（運営が受け付けていません）")
+    _throttle("create")
+    if not verify_password(body.code, c["hash"]):
+        _failed("create")
+        raise HTTPException(status_code=401, detail="合言葉が違います")
+    _failures.pop("create", None)
+    with _lock:
+        try:
+            gid = create_game(body.id, body.password, body.title, created_by="input")
+        except game.RuleError as e:
+            raise HTTPException(status_code=409, detail=str(e))
+    r = JSONResponse({"id": gid})
+    _set_cookie(r, input_cookie(gid), make_token(f"in:{gid}", pw_hash_of(gid)))
+    return r
 
 
 # --- 入力（試合ごとのパスワード） ---

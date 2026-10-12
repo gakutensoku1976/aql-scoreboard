@@ -408,3 +408,82 @@ def test_input_has_viewer_qr_button(client):
     assert html.index('id="qr"') < html.index('id="export"')  # 「記録をダウンロード」の左
     assert "表示画面QRコード" in html
     assert 'src="../static/vendor/qrcode-generator-2.0.4.js"' in html
+
+
+# ===== 出題者の入口（合言葉で試合を作る）・末尾の / =====
+
+def user_create(c, code, gid="u1", pw="pass-u1", title=""):
+    return c.post("/input", json={"code": code, "id": gid, "password": pw, "title": title})
+
+
+def test_input_entry_page(app_module):
+    c = TestClient(app_module.app)
+    r = c.get("/input")
+    assert r.status_code == 200 and "新しい試合を作る" in r.text and 'href="static/board.css"' in r.text
+
+
+def test_user_create_requires_code(app_module, client):
+    other = TestClient(app_module.app)
+    r = user_create(other, "anything")
+    assert r.status_code == 403 and "受け付けていません" in r.json()["detail"]  # 合言葉が未設定
+    assert client.put("/admin/api/create-code", json={"code": "abc"}).status_code == 409  # 短すぎる
+    st = client.put("/admin/api/create-code", json={"code": "aql-2026"}).json()
+    assert st["set"] is True and st["updated_at"].endswith("+09:00")
+    assert user_create(other, "wrong").status_code == 401
+    r = user_create(other, "aql-2026", gid="U1", title="第1試合")
+    assert r.status_code == 200 and r.json() == {"id": "u1"}
+    # 作った人はそのまま入力画面にログインしている
+    assert other.get("/input/u1/api/state").json()["title"] == "第1試合"
+    assert other.post("/input/u1/api/action", json={"type": "through"}).status_code == 200
+    # 管理者の一覧で作成者が分かる
+    games = {g["id"]: g for g in client.get("/admin/api/games").json()["games"]}
+    assert games["u1"]["created_by"] == "input" and games["t1"]["created_by"] == "admin"
+    # ID の規則・重複は管理者と同じ
+    assert "すでに" in user_create(other, "aql-2026", gid="t1").json()["detail"]
+    assert "使えません" in user_create(other, "aql-2026", gid="admin").json()["detail"]
+    # 受け付けを止めると作れない（作成済みの試合は残る）
+    assert client.delete("/admin/api/create-code").json()["set"] is False
+    assert user_create(other, "aql-2026", gid="u2").status_code == 403
+    assert other.get("/api/games/u1/state").status_code == 200
+
+
+def test_create_code_admin_only_and_throttle(app_module, client):
+    other = TestClient(app_module.app)
+    assert other.get("/admin/api/create-code").status_code == 401
+    assert other.put("/admin/api/create-code", json={"code": "abcd"}).status_code == 401
+    assert other.delete("/admin/api/create-code").status_code == 401
+    client.put("/admin/api/create-code", json={"code": "right-code"})
+    for _ in range(app_module.MAX_FAILURES):
+        assert user_create(other, "wrong").status_code == 401
+    assert user_create(other, "right-code").status_code == 429
+
+
+def test_user_create_limit(app_module, client, monkeypatch):
+    monkeypatch.setattr(app_module, "MAX_GAMES", 2)
+    client.put("/admin/api/create-code", json={"code": "aql-2026"})
+    other = TestClient(app_module.app)
+    assert user_create(other, "aql-2026", gid="u1").status_code == 200  # t1 と合わせて2件
+    r = user_create(other, "aql-2026", gid="u2")
+    assert r.status_code == 409 and "上限" in r.json()["detail"]
+    assert create(client, "a2", "pass").status_code == 200  # 管理者は上限に関係なく作れる
+
+
+def test_old_games_table_gets_created_by(tmp_path, monkeypatch):
+    import sqlite3
+    conn = sqlite3.connect(tmp_path / "t.db")
+    conn.execute("CREATE TABLE games (id TEXT PRIMARY KEY, pw_hash TEXT NOT NULL, created_at TEXT NOT NULL)")
+    conn.execute("INSERT INTO games VALUES ('old', 'scrypt$00$00', '2026-10-05T00:00:00+09:00')")
+    conn.commit()
+    conn.close()
+    m = load_app(tmp_path, monkeypatch)
+    assert [(g["id"], g["created_by"]) for g in m.list_games()] == [("old", "admin")]
+
+
+def test_trailing_slash_redirects_relatively(client):
+    # /score の下で動いても外へ出ないよう、転送先は相対パス
+    for path, loc in (("/input/", "../input"), ("/t1/", "../t1"), ("/input/t1/", "../t1"),
+                      ("/admin//", "../../admin"), ("/t1/?x=1", "../t1?x=1")):
+        r = client.get(path, follow_redirects=False)
+        assert r.status_code == 308 and r.headers["location"] == loc, path
+    assert client.get("/input/", follow_redirects=True).url.path == "/input"
+    assert client.post("/input/t1/api/action/", json={"type": "through"}).status_code == 404  # POST は転送しない
