@@ -6,7 +6,8 @@ const Board = (() => {
   let layout = { swap: false, rev: [false, false] };
   let lastRender = null;
 
-  function seatHtml(seat, i, t, controls, showNames, isLast) {
+  // last: この枠が直前の ○・× の枠なら "correct" / "wrong"、そうでなければ null
+  function seatHtml(seat, i, t, controls, showNames, last) {
     // 空席は枠だけ（名前・得点・×・○×ボタンを出さず、リーチ・封鎖の見た目も付けない）
     if (seat.vacant) return `<div class="slot"><div class="no">${i + 1}</div><div class="seat vacant" data-t="${t}" data-s="${i}"></div></div>`;
     const cls = ["seat", seat.locked ? "locked" : "", seat.reach ? "reach" : ""].join(" ");
@@ -15,8 +16,11 @@ const Board = (() => {
     const names = showNames
       // 名前欄は常に2行分の高さ。1人だけの枠はその上下中央に出す
       ? `<div class="pnames">${(seat.players || []).filter((n) => n).map((n) => `<span><i>${esc(n)}</i></span>`).join("")}</div>` : "";
-    // 直前の ○・× で得点が変わった枠は、枠の外側のリングと枠番の反転で示す（リーチ・封鎖の見た目とは重ならない）
-    return `<div class="slot${isLast ? " last" : ""}"><div class="no">${i + 1}</div><div class="${cls}" data-t="${t}" data-s="${i}">${names}` +
+    // 直前の ○・× で得点が変わった枠は、枠の外側の線と、枠番のバッジ（記号つき）で示す。○ は緑、× は赤。
+    // リーチ・封鎖は枠の内側を使うので重ならない。色だけでなく記号でも分かるようにする
+    const lastCls = last ? ` last ${last === "correct" ? "ok" : "ng"}` : "";
+    const no = last ? `${i + 1}<span class="mk">${last === "correct" ? "○" : "×"}</span>` : `${i + 1}`;
+    return `<div class="slot${lastCls}"><div class="no">${no}</div><div class="${cls}" data-t="${t}" data-s="${i}">${names}` +
       `<div class="pt">${seat.score}</div><div class="x">${x}</div>${btns}</div></div>`;
   }
 
@@ -31,7 +35,7 @@ const Board = (() => {
     const showNames = team.seats.some((s) => (s.players || []).some((n) => n));
     return `<section class="team${win}" data-i="${t}"><div class="thead"><div class="tname">${esc(team.name)}</div>` +
       `<div class="tscore">${team.score}${unit}</div></div>` +
-      `<div class="seats">${seatOrder(t).map((i) => seatHtml(team.seats[i], i, t, controls, showNames, !!last && last.team === t && last.seat === i)).join("")}</div></section>`;
+      `<div class="seats">${seatOrder(t).map((i) => seatHtml(team.seats[i], i, t, controls, showNames, last && last.team === t && last.seat === i ? last.kind : null)).join("")}</div></section>`;
   }
 
   function logHtml(s) {

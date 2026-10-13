@@ -162,8 +162,11 @@ header.bar .hright { display: flex; align-items: center; gap: 12px; }
 .help { font-size: 13px; font-weight: 600; color: var(--team0); white-space: nowrap; }
 
 /* 直前の ○・× で得点が変わった枠。リーチ（黄の塗り・内側の太線）・封鎖（斜線）は枠の内側を使うので、
-   こちらは枠の外側を囲むチーム色のリングと、枠番の反転で示す */
+   こちらは枠の外側を囲む線と、枠番のバッジ（「2 ○」「4 ×」）で示す。○ は緑、× は赤 */
 .slot > .no { width: max-content; min-width: 1.6em; margin-left: auto; margin-right: auto; padding: 0 6px; border-radius: 999px; }
-.slot.last > .no { color: var(--panel); background: var(--tc); }
-.slot.last > .seat { outline: 3px solid var(--tc); outline-offset: 2px; }
+.slot.last > .no { color: var(--panel); background: var(--lc); }
+.slot.last > .seat { outline: 3px solid var(--lc); outline-offset: 2px; }
+.slot > .no .mk { font-family: var(--f-body); margin-left: 3px; }  /* 数字用の細いフォントでは記号が小さくなるため */
+.slot.last.ok { --lc: var(--ok); }
+.slot.last.ng { --lc: var(--ng); }
 :root[data-theme="sm"] .slot > .no { border-radius: 0; }

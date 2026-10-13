@@ -241,12 +241,13 @@ def set_roster(state, team, players, vacant=None):
 
 
 def last_judged(state):
-    """直前の判定が ○・× ならその枠 {"team", "seat"}。スルー・判定なし（リセット直後など）は None。
+    """直前の判定が ○・× ならその枠と種類 {"team", "seat", "kind": "correct"|"wrong"}。
+    スルー・判定なし（リセット直後など）は None。
     画面で「いま得点が変わった枠」を強調するのに使う。取り消すと1つ前の判定の枠に戻る。"""
     log = state.get("log") or []
     if not log or log[-1]["kind"] == "through":
         return None
-    return {"team": log[-1]["team"], "seat": log[-1]["seat"]}
+    return {"team": log[-1]["team"], "seat": log[-1]["seat"], "kind": log[-1]["kind"]}
 
 
 def view(state):

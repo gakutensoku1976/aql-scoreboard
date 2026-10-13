@@ -566,11 +566,11 @@ def test_last_judged_seat_in_viewer_even_when_log_hidden(client):
     assert client.get("/api/games/t1/state").json()["last"] is None
     post(client, type="correct", team=1, seat=3)
     v = client.get("/api/games/t1/state").json()
-    assert "log" not in v and v["last"] == {"team": 1, "seat": 3}  # 判定の記録を出さない設定でも強調は出す
+    assert "log" not in v and v["last"] == {"team": 1, "seat": 3, "kind": "correct"}  # 判定の記録を出さない設定でも強調は出す
     post(client, type="wrong", team=0, seat=0)
-    assert client.get("/api/games/t1/state").json()["last"] == {"team": 0, "seat": 0}
+    assert client.get("/api/games/t1/state").json()["last"] == {"team": 0, "seat": 0, "kind": "wrong"}
     post(client, type="undo")  # 取り消すと1つ前の判定の枠に戻る
-    assert client.get("/api/games/t1/state").json()["last"] == {"team": 1, "seat": 3}
+    assert client.get("/api/games/t1/state").json()["last"] == {"team": 1, "seat": 3, "kind": "correct"}
     post(client, type="through")
     assert client.get("/api/games/t1/state").json()["last"] is None
     post(client, type="correct", team=0, seat=1)
