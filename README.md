@@ -9,6 +9,7 @@ AQL の2チーム戦の正誤を出題者が入力し、参加者が得点状況
 - マニュアル: `/manual`（利用者向けの使い方。出題者の入口・入力画面・入力画面のログイン画面からリンク。本文は `static/manual.html`）
 - 管理者: `/admin`（`ADMIN_PASSWORD` でログイン。試合の作成・一覧・削除）
 - ルール: `../aql-principles-and-practices/rules/game-rules.md` に従う（ロジックは `game.py`）
+- アプリの構成・技術スタック・データ構造: `docs/architecture.md`
 
 本番（aql-sokuhou と同居）では先頭に `/score` が付く（例: `https://aql-sokuhou.q-koken.com/score/503-1`）。画面は相対パスで書いてあるので、前に付くパスを問わず動く。末尾に `/` を付けた URL（`/score/input/` など）は、`/` を外した URL へ相対パスで転送する（FastAPI の自動の転送は `/score` を落とすので使わない）。
 
