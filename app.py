@@ -11,6 +11,9 @@ URL（本番では先頭に /score が付く）
 環境変数
   ADMIN_PASSWORD 管理者パスワード（未設定なら管理者画面は使えない）
   SECRET_KEY     ログイン状態の署名鍵（未設定なら初回に作って DB に保存）
+  COOKIE_SECURE  ログインの Cookie に Secure を付けるか（既定 "1"。手元で http://localhost を使うときは "0"）
+  TRUSTED_PROXIES 前に立つプロキシの段数（既定 0）。本番は CloudFront と nginx の 2。接続元の IP を
+                 X-Forwarded-For の後ろからこの段数だけ戻って取る（前の方は利用者が偽れるので使わない）
   DB_PATH        SQLite ファイル（既定 "data/scoreboard.db"）
   MAX_QUESTIONS  規定問題数（既定 40）
 """
@@ -35,6 +38,8 @@ from pydantic import BaseModel
 import game
 
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
+COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "1") != "0"
+TRUSTED_PROXIES = int(os.environ.get("TRUSTED_PROXIES", "0"))
 DB_PATH = os.environ.get("DB_PATH", "data/scoreboard.db")
 MAX_QUESTIONS = int(os.environ.get("MAX_QUESTIONS", "40"))
 STATIC = Path(__file__).parent / "static"
@@ -216,7 +221,8 @@ def delete_game(gid):
         n = conn.execute("DELETE FROM games WHERE id = ?", (gid,)).rowcount
         conn.execute("DELETE FROM states WHERE game_id = ?", (gid,))
         conn.execute("DELETE FROM settings WHERE game_id = ?", (gid,))
-    _failures.pop(f"in:{gid}", None)
+    for k in [k for k in _failures if k.startswith(f"in:{gid}|")]:
+        _failures.pop(k, None)
     return n > 0
 
 
@@ -271,7 +277,7 @@ def code_status():
 SESSION_SECONDS = 24 * 60 * 60
 MAX_FAILURES, LOCK_SECONDS = 5, 30
 ADMIN_COOKIE = "aqlsb_admin"
-_failures = {}  # key -> [連続失敗回数, この時刻まで受け付けない]
+_failures = {}  # "対象|接続元IP" -> [連続失敗回数, この時刻まで受け付けない]
 _secret = None
 
 
@@ -322,21 +328,45 @@ def admin_bound():
     return hashlib.sha256(ADMIN_PASSWORD.encode()).hexdigest()
 
 
-def _throttle(key):
-    count, until = _failures.get(key, [0, 0.0])
+def client_ip(request):
+    """接続元の IP。プロキシ（CloudFront・nginx）は X-Forwarded-For の後ろに順に IP を足すので、
+    後ろから TRUSTED_PROXIES 段だけ戻った位置が利用者の IP。それより前は利用者が自由に書けるので使わない。"""
+    chain = [x.strip() for x in request.headers.get("x-forwarded-for", "").split(",") if x.strip()]
+    chain.append(request.client.host if request.client else "")
+    return chain[max(0, len(chain) - 1 - TRUSTED_PROXIES)]
+
+
+# 失敗の回数は「対象（試合・管理者・作成）× 接続元の IP」ごとに数える。
+# 対象だけで数えると、第三者がわざと間違え続けて正しい利用者を締め出せてしまうため
+def _key(key, request):
+    return f"{key}|{client_ip(request)}"
+
+
+def _throttle(key, request):
+    count, until = _failures.get(_key(key, request), [0, 0.0])
     if time.monotonic() < until:
         raise HTTPException(status_code=429, detail="パスワードを続けて間違えたため、しばらく待ってから入力してください")
 
 
-def _failed(key):
-    entry = _failures.setdefault(key, [0, 0.0])
+def _failed(key, request):
+    if len(_failures) > 10000:  # 記録が増えすぎたら、止めている時間の過ぎたものを捨てる
+        now = time.monotonic()
+        for k in [k for k, (n, until) in _failures.items() if until < now]:
+            del _failures[k]
+    k = _key(key, request)
+    entry = _failures.setdefault(k, [0, 0.0])
     entry[0] += 1
     if entry[0] >= MAX_FAILURES:
-        _failures[key] = [0, time.monotonic() + LOCK_SECONDS]
+        _failures[k] = [0, time.monotonic() + LOCK_SECONDS]
+
+
+def _succeeded(key, request):
+    _failures.pop(_key(key, request), None)
 
 
 def _set_cookie(response, name, token):
-    response.set_cookie(name, token, max_age=SESSION_SECONDS, httponly=True, samesite="lax", path="/")
+    response.set_cookie(name, token, max_age=SESSION_SECONDS, httponly=True, samesite="lax", path="/",
+                        secure=COOKIE_SECURE)
 
 
 def is_admin(request):
@@ -377,6 +407,14 @@ async def no_cache(request, call_next):
     # 画面の更新や得点の変化がすぐ届くよう、ブラウザには毎回サーバーへ確認させる
     response = await call_next(request)
     response.headers["Cache-Control"] = "no-cache"
+    # 安全のためのヘッダ。HSTS は HTTPS で届いたときだけブラウザが従う（サブドメインには広げない）
+    response.headers["Strict-Transport-Security"] = "max-age=31536000"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "same-origin"
+    # 他サイトへの埋め込みは、閲覧画面（配信の重ね表示などで使う）以外は禁止する
+    if not getattr(request.state, "frame_ok", False):
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Content-Security-Policy"] = "frame-ancestors 'none'"
     return response
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
@@ -418,14 +456,14 @@ def admin_page(request: Request):
 
 
 @app.post("/admin/login")
-def admin_login(body: Login):
+def admin_login(body: Login, request: Request):
     if not ADMIN_PASSWORD:
         raise HTTPException(status_code=503, detail="管理者パスワードが設定されていません")
-    _throttle("admin")
+    _throttle("admin", request)
     if not hmac.compare_digest(body.password.encode(), ADMIN_PASSWORD.encode()):
-        _failed("admin")
+        _failed("admin", request)
         raise HTTPException(status_code=401, detail="パスワードが違います")
-    _failures.pop("admin", None)
+    _succeeded("admin", request)
     r = JSONResponse({"ok": True})
     _set_cookie(r, ADMIN_COOKIE, make_token("admin", admin_bound()))
     return r
@@ -502,16 +540,16 @@ class UserNewGame(NewGame):
 
 
 @app.post("/input")
-def input_create(body: UserNewGame):
+def input_create(body: UserNewGame, request: Request):
     """合言葉が合えば試合を作り、そのままその試合の入力画面にログインした状態にする。"""
     c = create_code()
     if c is None:
         raise HTTPException(status_code=403, detail="いまは新しい試合を作れません（運営が受け付けていません）")
-    _throttle("create")
+    _throttle("create", request)
     if not verify_password(body.code, c["hash"]):
-        _failed("create")
+        _failed("create", request)
         raise HTTPException(status_code=401, detail="合言葉が違います")
-    _failures.pop("create", None)
+    _succeeded("create", request)
     with _lock:
         try:
             gid = create_game(body.id, body.password, body.title, created_by="input")
@@ -532,17 +570,17 @@ def input_page(game_id: str, request: Request):
 
 
 @app.post("/input/{game_id}/login")
-def input_login(game_id: str, body: Login):
+def input_login(game_id: str, body: Login, request: Request):
     gid = norm_id(game_id)
     h = pw_hash_of(gid)
     if h is None:
         raise HTTPException(status_code=404, detail="試合が見つかりません")
     key = f"in:{gid}"
-    _throttle(key)
+    _throttle(key, request)
     if not verify_password(body.password, h):
-        _failed(key)
+        _failed(key, request)
         raise HTTPException(status_code=401, detail="パスワードが違います")
-    _failures.pop(key, None)
+    _succeeded(key, request)
     r = JSONResponse({"ok": True})
     _set_cookie(r, input_cookie(gid), make_token(key, h))
     return r
@@ -681,8 +719,9 @@ def get_state(game_id: str):
 
 # ほかのルートと衝突しないよう最後に登録する
 @app.get("/{game_id}")
-def viewer_page(game_id: str):
+def viewer_page(game_id: str, request: Request):
     gid = norm_id(game_id)
     if pw_hash_of(gid) is None:
         return page("notfound.html", "static", status_code=404)
+    request.state.frame_ok = True  # 閲覧画面は他サイトへの埋め込みを許す
     return page("viewer.html", "static")

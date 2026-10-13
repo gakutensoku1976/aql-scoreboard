@@ -11,6 +11,8 @@ GAME, PW = "t1", "pass-t1"
 def load_app(tmp_path, monkeypatch):
     monkeypatch.setenv("DB_PATH", str(tmp_path / "t.db"))
     monkeypatch.setenv("ADMIN_PASSWORD", ADMIN)
+    monkeypatch.setenv("COOKIE_SECURE", "0")  # TestClient は http なので、Secure の Cookie は送られない
+    monkeypatch.delenv("TRUSTED_PROXIES", raising=False)
     monkeypatch.delenv("SECRET_KEY", raising=False)
     import app as app_module
     importlib.reload(app_module)
@@ -576,3 +578,66 @@ def test_last_judged_seat_in_viewer_even_when_log_hidden(client):
     post(client, type="correct", team=0, seat=1)
     post(client, type="reset")
     assert client.get("/input/t1/api/state").json()["last"] is None
+
+
+# ===== 接続元ごとの失敗制限・Secure Cookie・安全用ヘッダ =====
+
+def _xff(ip):
+    # 本番の X-Forwarded-For は「利用者, CloudFront」で届き、さらに nginx が接続元として加わる（TRUSTED_PROXIES=2）
+    return {"X-Forwarded-For": f"{ip}, 130.176.0.1"}
+
+
+def test_lockout_is_per_client_ip(app_module, client, monkeypatch):
+    monkeypatch.setattr(app_module, "TRUSTED_PROXIES", 2)
+    c = TestClient(app_module.app)
+    for _ in range(app_module.MAX_FAILURES):
+        assert c.post("/input/t1/login", json={"password": "bad"}, headers=_xff("203.0.113.9")).status_code == 401
+    assert c.post("/input/t1/login", json={"password": PW}, headers=_xff("203.0.113.9")).status_code == 429
+    # 別の接続元の正しい出題者は締め出されない
+    assert c.post("/input/t1/login", json={"password": PW}, headers=_xff("198.51.100.7")).status_code == 200
+    # 先頭に別の IP を書いて偽っても、CloudFront が足した本当の接続元で数える
+    spoof = {"X-Forwarded-For": "198.51.100.7, 203.0.113.9, 130.176.0.1"}
+    assert c.post("/input/t1/login", json={"password": PW}, headers=spoof).status_code == 429
+
+
+def test_create_and_admin_lockout_per_ip(app_module, client, monkeypatch):
+    monkeypatch.setattr(app_module, "TRUSTED_PROXIES", 2)
+    client.put("/admin/api/create-code", json={"code": "right-code"})
+    c = TestClient(app_module.app)
+    for _ in range(app_module.MAX_FAILURES):
+        c.post("/input", json={"code": "wrong", "id": "u1", "password": "pass"}, headers=_xff("203.0.113.9"))
+        c.post("/admin/login", json={"password": "wrong"}, headers=_xff("203.0.113.9"))
+    assert c.post("/input", json={"code": "right-code", "id": "u1", "password": "pass"}, headers=_xff("203.0.113.9")).status_code == 429
+    assert c.post("/admin/login", json={"password": ADMIN}, headers=_xff("203.0.113.9")).status_code == 429
+    assert c.post("/input", json={"code": "right-code", "id": "u1", "password": "pass"}, headers=_xff("198.51.100.7")).status_code == 200
+    assert c.post("/admin/login", json={"password": ADMIN}, headers=_xff("198.51.100.7")).status_code == 200
+
+
+def test_client_ip_without_proxies(app_module):
+    from starlette.requests import Request
+    req = Request({"type": "http", "headers": [(b"x-forwarded-for", b"1.2.3.4")], "client": ("10.0.0.5", 1234)})
+    assert app_module.client_ip(req) == "10.0.0.5"  # TRUSTED_PROXIES=0 なら X-Forwarded-For を信じない
+
+
+def test_cookie_secure_by_default(tmp_path, monkeypatch):
+    m = load_app(tmp_path, monkeypatch)
+    monkeypatch.setattr(m, "COOKIE_SECURE", True)  # 既定（COOKIE_SECURE 未設定）と同じ
+    c = TestClient(m.app)
+    r = c.post("/admin/login", json={"password": ADMIN})
+    assert "secure" in r.headers["set-cookie"].lower() and "httponly" in r.headers["set-cookie"].lower()
+    monkeypatch.delenv("COOKIE_SECURE")
+    import app as app_module
+    importlib.reload(app_module)
+    assert app_module.COOKIE_SECURE is True  # 環境変数がなければ Secure を付ける
+
+
+def test_security_headers_and_framing(client):
+    for path in ("/input/t1", "/admin", "/input", "/", "/manual", "/api/games/t1/state", "/static/board.css"):
+        h = client.get(path).headers
+        assert h["x-content-type-options"] == "nosniff" and h["strict-transport-security"] == "max-age=31536000", path
+        assert h["referrer-policy"] == "same-origin", path
+    for path in ("/input/t1", "/admin", "/input", "/", "/manual", "/nothing"):
+        h = client.get(path).headers
+        assert h["x-frame-options"] == "DENY" and h["content-security-policy"] == "frame-ancestors 'none'", path
+    h = client.get("/t1").headers  # 閲覧画面だけは埋め込みを許す
+    assert "x-frame-options" not in h and "content-security-policy" not in h
