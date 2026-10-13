@@ -315,3 +315,16 @@ def test_view_handles_state_without_vacant():
     assert all(not s["vacant"] for t in game.view(st)["teams"] for s in t["seats"])
     st = game.correct(st, 0, 0)
     assert game.product(st["teams"][0]) == 2
+
+
+def test_last_judged_seat():
+    st = game.new_state()
+    assert game.view(st)["last"] is None  # 判定なし
+    st = game.correct(st, 0, 2)
+    assert game.view(st)["last"] == {"team": 0, "seat": 2}
+    st2 = game.wrong(st, 1, 4)
+    assert game.view(st2)["last"] == {"team": 1, "seat": 4}  # 次の入力で移る
+    assert game.view(game.through(st2))["last"] is None  # スルーで強調なし
+    st3 = game.wrong(st2, 1, 4)  # 封鎖になった枠も強調する
+    v = game.view(st3)
+    assert v["last"] == {"team": 1, "seat": 4} and v["teams"][1]["seats"][4]["locked"]

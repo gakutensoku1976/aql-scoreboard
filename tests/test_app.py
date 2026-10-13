@@ -560,3 +560,19 @@ def test_last_input_at_filled_for_existing_games(tmp_path, monkeypatch):
 def test_admin_page_has_sort_and_last_input_column(client):
     html = client.get("/admin").text
     assert "最終得点入力が古い順" in html and "<th>最終得点入力</th>" in html
+
+
+def test_last_judged_seat_in_viewer_even_when_log_hidden(client):
+    assert client.get("/api/games/t1/state").json()["last"] is None
+    post(client, type="correct", team=1, seat=3)
+    v = client.get("/api/games/t1/state").json()
+    assert "log" not in v and v["last"] == {"team": 1, "seat": 3}  # 判定の記録を出さない設定でも強調は出す
+    post(client, type="wrong", team=0, seat=0)
+    assert client.get("/api/games/t1/state").json()["last"] == {"team": 0, "seat": 0}
+    post(client, type="undo")  # 取り消すと1つ前の判定の枠に戻る
+    assert client.get("/api/games/t1/state").json()["last"] == {"team": 1, "seat": 3}
+    post(client, type="through")
+    assert client.get("/api/games/t1/state").json()["last"] is None
+    post(client, type="correct", team=0, seat=1)
+    post(client, type="reset")
+    assert client.get("/input/t1/api/state").json()["last"] is None

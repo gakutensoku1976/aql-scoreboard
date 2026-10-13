@@ -6,7 +6,7 @@ const Board = (() => {
   let layout = { swap: false, rev: [false, false] };
   let lastRender = null;
 
-  function seatHtml(seat, i, t, controls, showNames) {
+  function seatHtml(seat, i, t, controls, showNames, isLast) {
     // 空席は枠だけ（名前・得点・×・○×ボタンを出さず、リーチ・封鎖の見た目も付けない）
     if (seat.vacant) return `<div class="slot"><div class="no">${i + 1}</div><div class="seat vacant" data-t="${t}" data-s="${i}"></div></div>`;
     const cls = ["seat", seat.locked ? "locked" : "", seat.reach ? "reach" : ""].join(" ");
@@ -15,14 +15,15 @@ const Board = (() => {
     const names = showNames
       // 名前欄は常に2行分の高さ。1人だけの枠はその上下中央に出す
       ? `<div class="pnames">${(seat.players || []).filter((n) => n).map((n) => `<span><i>${esc(n)}</i></span>`).join("")}</div>` : "";
-    return `<div class="slot"><div class="no">${i + 1}</div><div class="${cls}" data-t="${t}" data-s="${i}">${names}` +
+    // 直前の ○・× で得点が変わった枠は、枠の外側のリングと枠番の反転で示す（リーチ・封鎖の見た目とは重ならない）
+    return `<div class="slot${isLast ? " last" : ""}"><div class="no">${i + 1}</div><div class="${cls}" data-t="${t}" data-s="${i}">${names}` +
       `<div class="pt">${seat.score}</div><div class="x">${x}</div>${btns}</div></div>`;
   }
 
   // 並びを変えても枠番・入力先は本来の枠のまま（data-s は本来の番号）
   const seatOrder = (t) => (layout.rev[t] ? [4, 3, 2, 1, 0] : [0, 1, 2, 3, 4]);
 
-  function teamHtml(team, t, res, controls, custom) {
+  function teamHtml(team, t, res, controls, custom, last) {
     // オプションルール（勝利点の変更）が ON のときは「現在点/勝利点」で表す
     const unit = custom ? `<small class="target">/${team.target}</small>` : "<small>点</small>";
     const win = res && res.winner === t ? " win" : "";
@@ -30,7 +31,7 @@ const Board = (() => {
     const showNames = team.seats.some((s) => (s.players || []).some((n) => n));
     return `<section class="team${win}" data-i="${t}"><div class="thead"><div class="tname">${esc(team.name)}</div>` +
       `<div class="tscore">${team.score}${unit}</div></div>` +
-      `<div class="seats">${seatOrder(t).map((i) => seatHtml(team.seats[i], i, t, controls, showNames)).join("")}</div></section>`;
+      `<div class="seats">${seatOrder(t).map((i) => seatHtml(team.seats[i], i, t, controls, showNames, !!last && last.team === t && last.seat === i)).join("")}</div></section>`;
   }
 
   function logHtml(s) {
@@ -70,7 +71,7 @@ const Board = (() => {
       banner.classList.add("show");
     } else banner.classList.remove("show");
     root.querySelector(".teams").innerHTML = (layout.swap ? [1, 0] : [0, 1])
-      .map((i) => teamHtml(s.teams[i], i, res, controls, s.custom_target)).join("");
+      .map((i) => teamHtml(s.teams[i], i, res, controls, s.custom_target, s.last)).join("");
     fitNames(root);
     const log = root.querySelector(".log");
     log.hidden = s.log === undefined;

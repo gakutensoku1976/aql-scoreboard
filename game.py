@@ -240,6 +240,15 @@ def set_roster(state, team, players, vacant=None):
     return st
 
 
+def last_judged(state):
+    """直前の判定が ○・× ならその枠 {"team", "seat"}。スルー・判定なし（リセット直後など）は None。
+    画面で「いま得点が変わった枠」を強調するのに使う。取り消すと1つ前の判定の枠に戻る。"""
+    log = state.get("log") or []
+    if not log or log[-1]["kind"] == "through":
+        return None
+    return {"team": log[-1]["team"], "seat": log[-1]["seat"]}
+
+
 def view(state):
     """表示用に得点・リーチ・封鎖・勝敗を付け加えた dict。"""
     res = result(state)
@@ -256,6 +265,6 @@ def view(state):
                       "reach": any(s["reach"] for s in seats)})
     return {"title": state.get("title", ""), "custom_target": bool(state.get("custom_target")),
             "no_question_limit": bool(state.get("no_question_limit")),
-            "teams": teams, "question": state["question"],
+            "teams": teams, "question": state["question"], "last": last_judged(state),
             "max_questions": state["max_questions"], "log": state["log"][-12:],
             "result": res}

@@ -160,3 +160,10 @@ header.bar .hright { display: flex; align-items: center; gap: 12px; }
 
 /* 入力画面・出題者の入口・ログイン画面からマニュアルへのリンク */
 .help { font-size: 13px; font-weight: 600; color: var(--team0); white-space: nowrap; }
+
+/* 直前の ○・× で得点が変わった枠。リーチ（黄の塗り・内側の太線）・封鎖（斜線）は枠の内側を使うので、
+   こちらは枠の外側を囲むチーム色のリングと、枠番の反転で示す */
+.slot > .no { width: max-content; min-width: 1.6em; margin-left: auto; margin-right: auto; padding: 0 6px; border-radius: 999px; }
+.slot.last > .no { color: var(--panel); background: var(--tc); }
+.slot.last > .seat { outline: 3px solid var(--tc); outline-offset: 2px; }
+:root[data-theme="sm"] .slot > .no { border-radius: 0; }
