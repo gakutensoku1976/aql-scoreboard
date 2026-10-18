@@ -641,3 +641,13 @@ def test_security_headers_and_framing(client):
         assert h["x-frame-options"] == "DENY" and h["content-security-policy"] == "frame-ancestors 'none'", path
     h = client.get("/t1").headers  # 閲覧画面だけは埋め込みを許す
     assert "x-frame-options" not in h and "content-security-policy" not in h
+
+
+def test_jleague_theme_selectable_and_fonts_served(client):
+    for path in ("/t1", "/input/t1", "/admin"):
+        assert '<option value="jleague">J.League</option>' in client.get(path).text, path
+    css = client.get("/static/board.css").text
+    assert ':root[data-theme="jleague"]' in css and ':not([data-theme="jleague"])' in css
+    for f in ("inter-latin-wght-normal.woff2", "inter-latin-wght-italic.woff2", "LICENSE.txt"):
+        assert client.get(f"/static/vendor/inter/{f}").status_code == 200, f
+    assert "Noto+Sans+JP" in client.get("/t1").text

@@ -22,7 +22,7 @@
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]):not([data-theme="sm"]) {
+  :root:not([data-theme="light"]):not([data-theme="sm"]):not([data-theme="jleague"]) {
     --bg: #151517; --panel: #1f1f22; --ink: #f2f1ee; --muted: #a3a2a8; --line: #34343a;
     --team0: #5fb8c2; --team0-soft: #1b3336; --team1: #e08a69; --team1-soft: #3a241c;
     --reach: #f0bd3a; --reach-soft: #5c4a12; --lock: #b5b4ba; --lock-soft: #2c2c31;
@@ -170,3 +170,80 @@ header.bar .hright { display: flex; align-items: center; gap: 12px; }
 .slot.last.ok { --lc: var(--ok); }
 .slot.last.ng { --lc: var(--ng); }
 :root[data-theme="sm"] .slot > .no { border-radius: 0; }
+
+/* ===== J.League（Ｊリーグ ブランドガイドのビジュアルアイデンティティに準拠） =====
+   色はリーグ公式カラーの J.Black（#000000）・J.White（#FFFFFF）と、リーグカラーの階調の #656565・#E5E5E5 の4色だけ。
+   クラブカラーは使わない。2チームは「Black 基調」と「White 基調」で対戦の構造を示す。
+   ガイドで禁じる「規則性のない多色使用」「ドロップシャドウやエフェクト」を避けるため、影・半透明・点滅は使わない。
+   独自の図形（Flare）・ロゴは使わない。
+   書体はガイドの代替書体（無料）で、欧文 Inter・和文 Noto Sans JP。和欧混植は Inter を 110%（ガイドの指定）。
+   ベースライン -4% は、CSS では欧文だけを動かせないので省く */
+@font-face {
+  font-family: "JL Inter"; font-style: normal; font-weight: 100 900; font-display: swap; size-adjust: 110%;
+  src: url("vendor/inter/inter-latin-wght-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "JL Inter"; font-style: italic; font-weight: 100 900; font-display: swap; size-adjust: 110%;
+  src: url("vendor/inter/inter-latin-wght-italic.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+:root[data-theme="jleague"] {
+  --jl-black: #000000; --jl-white: #ffffff; --jl-grey-dark: #656565; --jl-grey-light: #e5e5e5;
+  --bg: var(--jl-white); --panel: var(--jl-white); --ink: var(--jl-black); --muted: var(--jl-grey-dark); --line: var(--jl-black);
+  --team0: var(--jl-black); --team0-soft: var(--jl-white); --team1: var(--jl-black); --team1-soft: var(--jl-white);
+  --reach: var(--jl-black); --reach-soft: var(--jl-black); --reach-ink: var(--jl-white);
+  --lock: var(--jl-grey-dark); --lock-soft: var(--jl-grey-light);
+  --ok: var(--jl-black); --ng: var(--jl-black);
+  --radius: 0; --radius-s: 0; --radius-xs: 0;
+  --f-body: "JL Inter", "Noto Sans JP", sans-serif;
+  --f-num: "JL Inter", "Noto Sans JP", sans-serif;
+  accent-color: var(--jl-black);
+  color-scheme: light;
+}
+:root[data-theme="jleague"] body { font-weight: 500; }
+/* チーム1 は Black 基調、チーム2 は White 基調。枠・ボタンの色は、チームの中だけ変数を入れ替えて決める */
+:root[data-theme="jleague"] .team[data-i="0"] {
+  --panel: var(--jl-black); --bg: var(--jl-black); --ink: var(--jl-white); --line: var(--jl-grey-dark); --tc: var(--jl-white);
+  --muted: var(--jl-grey-light); --ok: var(--jl-white); --ng: var(--jl-white);
+  --reach: var(--jl-white); --reach-soft: var(--jl-white); --reach-ink: var(--jl-black);
+  --lock: var(--jl-grey-light); --lock-soft: var(--jl-grey-dark);
+  color: var(--ink);
+}
+:root[data-theme="jleague"] .team[data-i="1"] { --tc: var(--jl-black); }
+:root[data-theme="jleague"] .team { border: 3px solid var(--jl-black); }
+:root[data-theme="jleague"] .team.win { box-shadow: none; outline: 4px solid var(--jl-black); outline-offset: 3px; }
+:root[data-theme="jleague"] .tname { font-weight: 900; }
+:root[data-theme="jleague"] .tscore { font-weight: 900; font-style: italic; letter-spacing: -.02em; }
+:root[data-theme="jleague"] .tscore small { font-style: normal; }
+:root[data-theme="jleague"] .seat { border: 2px solid var(--line); }
+:root[data-theme="jleague"] .seat .pt { font-weight: 900; font-style: italic; }
+/* リーチは枠の白黒を反転して示す（黄などの色は使わない） */
+:root[data-theme="jleague"] .seat.reach { color: var(--reach-ink); box-shadow: none; }
+:root[data-theme="jleague"] .seat.reach .x { color: var(--reach-ink); }
+:root[data-theme="jleague"] .seat.locked .x { color: var(--ink); }
+:root[data-theme="jleague"] .seat.vacant { border: 2px dashed var(--jl-grey-dark); }
+:root[data-theme="jleague"] .team[data-i="0"] .seat.vacant { border-color: var(--jl-grey-light); }
+:root[data-theme="jleague"] .seat.flash { animation: none; }
+/* 直前の ○・× は外側の線と記号つきの枠番（○ と × は記号で区別する） */
+:root[data-theme="jleague"] .slot.last { --lc: var(--tc); }
+:root[data-theme="jleague"] .banner { font-weight: 900; }
+:root[data-theme="jleague"] .log { border: 2px solid var(--jl-black); }
+:root[data-theme="jleague"] .log li { background: var(--jl-grey-light); }
+:root[data-theme="jleague"] .menu-panel { box-shadow: none; border: 2px solid var(--jl-black); }
+:root[data-theme="jleague"] .menu summary { border: 2px solid var(--jl-black); }
+:root[data-theme="jleague"] dialog { border: 3px solid var(--jl-black); }
+:root[data-theme="jleague"] dialog::backdrop, :root[data-theme="jleague"] #resetdlg::backdrop { background: transparent; }
+:root[data-theme="jleague"] hr { color: var(--jl-black); }
+:root[data-theme="jleague"] a:not(.btn) { color: var(--jl-black); }
+:root[data-theme="jleague"] ::placeholder { color: var(--jl-grey-dark); opacity: 1; }
+:root[data-theme="jleague"] :focus-visible { outline: 3px solid var(--jl-black); outline-offset: 1px; }
+/* 使えない部品・閲覧画面で非表示の項目は、薄くする代わりに灰で示す */
+:root[data-theme="jleague"] :disabled { opacity: 1 !important; color: var(--jl-grey-dark) !important; border-color: var(--jl-grey-dark) !important; }
+:root[data-theme="jleague"] .team[data-i="0"] :disabled { color: var(--jl-grey-dark) !important; border-color: var(--jl-grey-dark) !important; }
+:root[data-theme="jleague"] .qcount.off, :root[data-theme="jleague"] .log.off { opacity: 1; }
+:root[data-theme="jleague"] .qcount.off, :root[data-theme="jleague"] .qcount.off b,
+:root[data-theme="jleague"] .log.off h2, :root[data-theme="jleague"] .log.off li, :root[data-theme="jleague"] .log.off li span { color: var(--jl-grey-dark); }
+:root[data-theme="jleague"] button, :root[data-theme="jleague"] input,
+:root[data-theme="jleague"] select, :root[data-theme="jleague"] textarea { font-family: var(--f-body); }
+:root[data-theme="jleague"] .slot > .no { border-radius: 0; }

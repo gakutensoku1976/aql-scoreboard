@@ -21,7 +21,7 @@ aql-scoreboard（AQL の2チーム戦の正誤入力・得点表示）の作り�
 | 認証 | 標準ライブラリの `hashlib.scrypt`・`hmac`・`secrets` | 外部の認証基盤は使わない |
 | 画面 | HTML・CSS・JavaScript（フレームワーク・ビルドなし） | 1.5秒ごとのポーリング |
 | 同梱ライブラリ | html-to-image 1.11.13（画像をコピー）、qrcode-generator 2.0.4（QR コード） | どちらも MIT。`static/vendor/` に同梱し、npm の sha512 を照合済み |
-| フォント | Google Fonts の BIZ UDPGothic・Saira Extra Condensed | SportsManiax の表示モードで使う |
+| フォント | Google Fonts の BIZ UDPGothic・Saira Extra Condensed・Noto Sans JP、同梱の Inter（OFL） | BIZ UDPGothic・Saira は SportsManiax、Inter・Noto Sans JP は J.League の表示モードで使う |
 | テスト | pytest ＋ FastAPI の TestClient（httpx） | `uv run pytest` |
 | パッケージ管理 | uv（`pyproject.toml`・`uv.lock`） | |
 | 実行環境 | Docker（`python:3.12-slim`） | 本番は版を固定してインストール |
@@ -35,7 +35,7 @@ aql-scoreboard/
 ├── game.py             得点のルール（状態 dict を受け取り、新しい dict を返す純粋な関数）
 ├── static/
 │   ├── board.js        閲覧・入力で共用：描画、ポーリング、表示モード、並び順、画像化、QR
-│   ├── board.css       共通の見た目（ライト・ダーク・SportsManiax の3モード）
+│   ├── board.css       共通の見た目（ライト・ダーク・SportsManiax・J.League の4モード）
 │   ├── viewer.html     閲覧画面            /<ID>
 │   ├── input.html      入力画面            /input/<ID>
 │   ├── input.css       入力画面の見た目
@@ -46,7 +46,7 @@ aql-scoreboard/
 │   ├── manual.html     マニュアル          /manual
 │   ├── notfound.html   試合が見つかりません
 │   ├── pages.css       入口・ログイン・管理者・マニュアルの見た目
-│   └── vendor/         html-to-image・qrcode-generator とライセンス
+│   └── vendor/         html-to-image・qrcode-generator・Inter（inter/）とライセンス
 ├── tests/              test_game.py（ルール）、test_app.py（API・画面・認証）
 ├── tools/              make_qr_pdf.py（QR の PDF）、loadtest.py（負荷試験）
 ├── docs/               この文書、非機能試験の記録

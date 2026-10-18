@@ -8,7 +8,7 @@
 <script>try{var t=localStorage.getItem("aql-scoreboard-theme");if(t)document.documentElement.dataset.theme=t;}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" crossorigin="anonymous" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Saira+Extra+Condensed:wght@500;700&display=swap">
+<link rel="stylesheet" crossorigin="anonymous" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Saira+Extra+Condensed:wght@500;700&family=Noto+Sans+JP:wght@500;700;900&display=swap">
 <link rel="stylesheet" href="{{STATIC}}/board.css">
 <link rel="stylesheet" href="{{STATIC}}/pages.css">
 <title>マニュアル | AQL 正誤入力・得点表示</title>
@@ -112,7 +112,7 @@
         <tr><th>試合名・チーム名</th><td>試合名（40文字まで）は閲覧画面・入力画面の見出しとタブ名に出ます。チーム名は空欄にすると変わりません。</td></tr>
         <tr><th>オプションルール</th><td><b>勝利点を変更する</b>：チームごとに勝利点（2〜99999）を決めます（ハンデ戦など）。ON の間、得点は「現在点/勝利点」で表示します。試合の途中でも変えられますが、現在の得点以下にはできません。<br><b>40問で終了しない</b>：無効になった問題の分を続けて出題するときに使います。ON の間、規定の問題数を過ぎても試合は終わらず、問題数は「第n問」と表示します。</td></tr>
         <tr><th>閲覧画面に表示する項目</th><td>「問題数」「判定の記録」を閲覧画面に出すかどうか。<b>初期はどちらも出しません</b>。出さない項目は閲覧画面の通信にも含まれません（入力画面には常に出ます）。</td></tr>
-        <tr><th>この端末の入力画面</th><td>チームの左右入れ替え、チームごとに枠を5→1の順に並べる、表示モード（ライト／ダーク／SportsManiax）。席の並びに合わせるための設定で、この端末だけに保存されます。並べ替えても枠番と入力先は変わりません。</td></tr>
+        <tr><th>この端末の入力画面</th><td>チームの左右入れ替え、チームごとに枠を5→1の順に並べる、表示モード（ライト／ダーク／SportsManiax／J.League）。席の並びに合わせるための設定で、この端末だけに保存されます。並べ替えても枠番と入力先は変わりません。</td></tr>
       </tbody>
     </table>
   </section>
@@ -125,7 +125,7 @@
         <ul>
           <li><b>画像をコピー</b>：得点状況を画像にしてコピー（できない端末では保存）</li>
           <li><b>チームの左右を入れ替え</b>・<b>枠を5→1</b>：自分の席から見た並びに合わせる（この端末だけ）</li>
-          <li><b>表示モード</b>：ライト／ダーク／SportsManiax（この端末だけ）</li>
+          <li><b>表示モード</b>：ライト／ダーク／SportsManiax／J.League（この端末だけ）</li>
           <li><b>QRコードを表示</b>：この閲覧画面の QR コード。周りの人に共有するときに使います</li>
         </ul>
       </li>
