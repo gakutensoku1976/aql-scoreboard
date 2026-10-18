@@ -33,7 +33,9 @@ const Board = (() => {
     const win = res && res.winner === t ? " win" : "";
     // どの枠にも名前が無いチームは名前欄ごと省く
     const showNames = team.seats.some((s) => (s.players || []).some((n) => n));
-    return `<section class="team${win}" data-i="${t}"><div class="thead"><div class="tname">${esc(team.name)}</div>` +
+    // エンブレム（学章など）はチーム名の左。外部の画像なので、遷移元を送らず、読み込めなければ消す（render の後で）
+    const emblem = team.emblem ? `<img class="emblem" src="${esc(team.emblem)}" alt="" referrerpolicy="no-referrer" decoding="async">` : "";
+    return `<section class="team${win}" data-i="${t}"><div class="thead"><div class="tname">${emblem}<span>${esc(team.name)}</span></div>` +
       `<div class="tscore">${team.score}${unit}</div></div>` +
       `<div class="seats">${seatOrder(t).map((i) => seatHtml(team.seats[i], i, t, controls, showNames, last && last.team === t && last.seat === i ? last.kind : null)).join("")}</div></section>`;
   }
@@ -76,6 +78,7 @@ const Board = (() => {
     } else banner.classList.remove("show");
     root.querySelector(".teams").innerHTML = (layout.swap ? [1, 0] : [0, 1])
       .map((i) => teamHtml(s.teams[i], i, res, controls, s.custom_target, s.last)).join("");
+    for (const img of root.querySelectorAll(".teams img.emblem")) img.onerror = () => img.remove();
     fitNames(root);
     const log = root.querySelector(".log");
     log.hidden = s.log === undefined;
@@ -149,6 +152,10 @@ const Board = (() => {
   const pad = (n) => String(n).padStart(2, "0");
   const stamp = (d) => `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
   async function renderShot(node, now) {
+    // 複製した画像（エンブレム）は読み込みが終わるまで幅が 0 なので、終わるのを待ってから写す（最大3秒）
+    const pending = [...node.querySelectorAll("img")].filter((img) => !img.complete)
+      .map((img) => new Promise((resolve) => { img.addEventListener("load", resolve, { once: true }); img.addEventListener("error", resolve, { once: true }); }));
+    if (pending.length) await Promise.race([Promise.all(pending), new Promise((r) => setTimeout(r, 3000))]);
     const body = getComputedStyle(document.body);
     const muted = getComputedStyle(document.querySelector(".foot")).color;
     const ratio = 2, margin = 16, band = 30;
@@ -156,6 +163,8 @@ const Board = (() => {
       backgroundColor: body.backgroundColor, pixelRatio: ratio,
       width: node.offsetWidth + margin * 2, height: node.offsetHeight + margin * 2,
       style: { padding: `${margin}px`, margin: "0", position: "static", left: "auto", top: "auto" },
+      // 他サイトの画像（エンブレム）が取り込めないときは透明の画像に置き換え、コピー自体は続ける
+      imagePlaceholder: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=",  // 1x1 の透明な PNG
     });
     const out = document.createElement("canvas");
     out.width = canvas.width;

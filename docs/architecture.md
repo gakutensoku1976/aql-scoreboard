@@ -164,6 +164,7 @@ flowchart LR
 | `undo` | なし | 直前の操作を取り消す | — |
 | `reset` | なし | 最初から（名前・空席・試合名・勝利点などは残す） | 戻せない |
 | `rename` | `names`・`title` | チーム名・試合名 | 対象 |
+| `emblems` | `emblems` | エンブレム（2チーム分の画像の URL。空欄で消す） | 対象 |
 | `roster` | `team`・`players`・`vacant` | 参加者名・空席（空席は試合開始前だけ） | 対象 |
 | `targets` | `custom_target`・`targets` | 勝利点 | 対象 |
 | `question_limit` | `no_question_limit` | 40問で終了しない | 対象 |
@@ -214,13 +215,13 @@ erDiagram
 ```json
 {
   "teams": [
-    {"name": "チームA",
+    {"name": "チームA", "emblem": "https://example.com/crest.svg",
      "seats": [
        {"score": 2, "cross": 0, "players": ["彦野", "仁村"], "vacant": false},
        {"score": 1, "cross": 0, "players": ["立浪", ""], "vacant": false},
        "… 5枠"
      ]},
-    {"name": "チームB", "seats": ["… 5枠"]}
+    {"name": "チームB", "emblem": "", "seats": ["… 5枠"]}
   ],
   "title": "503会議室 第1試合",
   "custom_target": false,
@@ -238,6 +239,7 @@ erDiagram
 | 項目 | 型 | 意味 |
 |---|---|---|
 | `teams[]` | 2要素 | 0 が左（チーム1）、1 が右（チーム2） |
+| `teams[].emblem` | str | エンブレム画像の URL（https の png・jpg・jpeg・bmp・svg。空欄はなし） |
 | `teams[].seats[]` | 5要素 | 枠1〜5（`seat` は 0 始まり） |
 | `seats[].score` | int | 枠の得点（1から） |
 | `seats[].cross` | int | × の数（2で封鎖） |
@@ -279,7 +281,7 @@ erDiagram
 | `game_id`・`exported_at`・`title` | 試合ID・書き出し時刻・試合名 |
 | `rules` | `max_questions`・`no_question_limit`・`custom_target`・`targets` |
 | `question`・`result` | 問題数・勝敗（勝者のチーム名つき） |
-| `teams[]` | チーム名・得点・積（頭打ち前）・勝利点、各枠（枠番1始まり・参加者・得点・×・封鎖・リーチ・空席） |
+| `teams[]` | チーム名・エンブレムの URL・得点・積（頭打ち前）・勝利点、各枠（枠番1始まり・参加者・得点・×・封鎖・リーチ・空席） |
 | `log[]` | 試合開始（最後のリセット）からの全判定。枠番は1始まり、チーム名と参加者名つき |
 
 ### 7.5 ログイン（Cookie）

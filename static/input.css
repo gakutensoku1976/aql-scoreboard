@@ -104,3 +104,12 @@ details.fold > .names, details.fold > .display { margin: 10px 0 0; background: n
 .session button { min-height: 36px; padding: 0 14px; border-radius: var(--radius-s); border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-size: 14px; cursor: pointer; }
 /* マニュアルへのリンクは一番下の行の左端 */
 .session .help { margin-right: auto; }
+/* エンブレムの URL（試合名・チーム名の欄） */
+.names .emblems { flex-basis: 100%; display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.names .erow { display: grid; grid-template-columns: 11em 1fr 44px; gap: 8px; align-items: center; }
+.names .erow label { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.names .erow input { min-width: 0; }
+.names .eprev { width: 44px; height: 40px; object-fit: contain; }
+.names .emblems button { align-self: flex-start; }
+.names .emblems .note { font-size: 12px; color: var(--muted); }
+@media (max-width: 600px) { .names .erow { grid-template-columns: 1fr 44px; } .names .erow label { grid-column: 1 / -1; } }

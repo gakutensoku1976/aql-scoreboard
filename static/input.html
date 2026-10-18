@@ -42,6 +42,14 @@
     <input id="n0" maxlength="30" placeholder="チーム1の名前">
     <input id="n1" maxlength="30" placeholder="チーム2の名前">
     <button id="rename">試合名・チーム名を変更</button>
+    <div class="emblems">
+      <div class="erow"><label for="e0"><span class="lname" data-t="0">チーム1</span> のエンブレム</label>
+        <input id="e0" type="url" inputmode="url" maxlength="2048" autocomplete="off" spellcheck="false" placeholder="https://…/emblem.png"><img class="eprev" id="ep0" alt=""></div>
+      <div class="erow"><label for="e1"><span class="lname" data-t="1">チーム2</span> のエンブレム</label>
+        <input id="e1" type="url" inputmode="url" maxlength="2048" autocomplete="off" spellcheck="false" placeholder="https://…/emblem.png"><img class="eprev" id="ep1" alt=""></div>
+      <button id="emblems">エンブレムを変更</button>
+      <span class="note">チーム名の左に出す学章などの画像の URL。https で始まる png・jpg・bmp・svg の URL を入れます。空欄にするとエンブレムを消します。</span>
+    </div>
   </div>
   </details>
   <details class="fold" id="fold-option">
@@ -179,6 +187,8 @@
     for (const i of [0, 1]) {
       const el = document.getElementById("n" + i);
       if (document.activeElement !== el) el.value = s.teams[i].name;
+      const em = document.getElementById("e" + i);
+      if (!emblemDirty && document.activeElement !== em) { em.value = s.teams[i].emblem || ""; previewEmblem(i); }
     }
     const title = document.getElementById("title");
     if (document.activeElement !== title) title.value = s.title;
@@ -198,7 +208,8 @@
     document.getElementById("fs-roster").textContent = vac.some((n) => n)
       ? s.teams.map((t, i) => (vac[i] ? `${t.name} 空席${vac[i]}枠` : "")).filter((x) => x).join("　")
       : "1枠2名まで・全角6文字まで";
-    document.getElementById("fs-names").textContent = `${s.title || "試合名なし"}　${s.teams[0].name} 対 ${s.teams[1].name}`;
+    document.getElementById("fs-names").textContent = `${s.title || "試合名なし"}　${s.teams[0].name} 対 ${s.teams[1].name}` +
+      (s.teams.some((t) => t.emblem) ? "　エンブレムあり" : "");
     const opts = [s.custom_target ? `勝利点 ${s.teams[0].target} / ${s.teams[1].target}` : "勝利点 200"];
     if (s.no_question_limit) opts.push(`${s.max_questions}問で終了しない`);
     document.getElementById("fs-option").textContent = opts.join("　");
@@ -330,6 +341,21 @@
     }
     send({ type: "reset" });
   });
+  // エンブレム。入力中・未保存の値は自動更新で上書きしない。プレビューは画像を読み込めたときだけ出す
+  let emblemDirty = false;
+  function previewEmblem(i) {
+    const url = document.getElementById("e" + i).value.trim();
+    const img = document.getElementById("ep" + i);
+    img.hidden = true;
+    img.onload = () => { img.hidden = false; };
+    img.onerror = () => { img.hidden = true; };
+    if (/^https:\/\/\S+$/i.test(url)) { img.referrerPolicy = "no-referrer"; img.src = url; } else img.removeAttribute("src");
+  }
+  for (const i of [0, 1]) document.getElementById("e" + i).addEventListener("input", () => { emblemDirty = true; previewEmblem(i); });
+  document.getElementById("emblems").onclick = async () => {
+    const ok = await send({ type: "emblems", emblems: [0, 1].map((i) => document.getElementById("e" + i).value) });
+    if (ok) emblemDirty = false;
+  };
   document.getElementById("rename").onclick = () =>
     send({ type: "rename", title: document.getElementById("title").value,
            names: [document.getElementById("n0").value, document.getElementById("n1").value] });

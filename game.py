@@ -10,6 +10,7 @@
 """
 
 import copy
+from urllib.parse import urlsplit
 
 SEATS = 5
 WIN_SCORE = 200
@@ -27,17 +28,20 @@ def empty_roster():
 
 
 TITLE_MAX = 40
+EMBLEM_MAX = 2048
+EMBLEM_EXTS = (".png", ".jpg", ".jpeg", ".bmp", ".svg")
 
 
 def new_state(names=("チームA", "チームB"), max_questions=40, rosters=None, title="",
-              custom_target=False, targets=(WIN_SCORE, WIN_SCORE), no_question_limit=False, vacants=None):
+              custom_target=False, targets=(WIN_SCORE, WIN_SCORE), no_question_limit=False, vacants=None,
+              emblems=("", "")):
     rosters = rosters or [empty_roster(), empty_roster()]
     vacants = vacants or [[False] * SEATS, [False] * SEATS]
     return {
         "teams": [
-            {"name": n, "seats": [{"score": 1, "cross": 0, "players": list(p), "vacant": bool(v)}
-                                  for p, v in zip(r, vs)]}
-            for n, r, vs in zip(names, rosters, vacants)
+            {"name": n, "emblem": e, "seats": [{"score": 1, "cross": 0, "players": list(p), "vacant": bool(v)}
+                                               for p, v in zip(r, vs)]}
+            for n, e, r, vs in zip(names, emblems, rosters, vacants)
         ],
         "title": title,
         "custom_target": custom_target,
@@ -163,6 +167,38 @@ def rename(state, names, title=None):
     return st
 
 
+def check_emblem(url):
+    """エンブレム画像の URL を確かめて整えた値を返す。空欄は「なし」。
+    https の png・jpg・jpeg・bmp・svg だけを受け付ける（画面は https なので http の画像は読み込めない。
+    javascript: などの URL も、この確認で断る）。"""
+    url = (url or "").strip()
+    if not url:
+        return ""
+    if len(url) > EMBLEM_MAX:
+        raise RuleError(f"エンブレムの URL は{EMBLEM_MAX}文字までにしてください")
+    parts = urlsplit(url)
+    if parts.scheme.lower() != "https" or not parts.netloc or any(c.isspace() for c in url):
+        raise RuleError("エンブレムの URL は https:// で始まる画像の URL にしてください")
+    if not parts.path.lower().endswith(EMBLEM_EXTS):
+        raise RuleError("エンブレムは png・jpg・bmp・svg の画像の URL にしてください（URL が .png などで終わるもの）")
+    return url
+
+
+def set_emblems(state, emblems):
+    """emblems: 2チーム分の画像の URL。空欄はエンブレムなし。"""
+    if not isinstance(emblems, list) or len(emblems) != 2:
+        raise RuleError("エンブレムの指定が不正です")
+    cleaned = [check_emblem(e) for e in emblems]
+    st = copy.deepcopy(state)
+    for t, e in zip(st["teams"], cleaned):
+        t["emblem"] = e
+    return st
+
+
+def emblems_of(state):
+    return [t.get("emblem", "") for t in state["teams"]]
+
+
 def set_targets(state, custom, values=None):
     """オプションルール（勝利点）の ON/OFF と各チームの勝利点を設定する。
     どのチームも、新しい勝利点は現在の得点（頭打ち前の積）より大きくなければならない。
@@ -262,7 +298,7 @@ def view(state):
              "reach": res is None and is_reach(t, i, target)}
             for i, s in enumerate(t["seats"])
         ]
-        teams.append({"name": t["name"], "score": team_score(t, target), "target": target, "seats": seats,
+        teams.append({"name": t["name"], "emblem": t.get("emblem", ""), "score": team_score(t, target), "target": target, "seats": seats,
                       "reach": any(s["reach"] for s in seats)})
     return {"title": state.get("title", ""), "custom_target": bool(state.get("custom_target")),
             "no_question_limit": bool(state.get("no_question_limit")),

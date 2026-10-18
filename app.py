@@ -137,7 +137,7 @@ def pop(gid):
 
 
 def reset(gid, state):
-    """チーム名・参加者名・空席・試合名・勝利点の設定を残して最初の状態に戻す。"""
+    """チーム名・エンブレム・参加者名・空席・試合名・勝利点の設定を残して最初の状態に戻す。"""
     names = [t["name"] for t in state["teams"]]
     rosters = [game.roster(t) for t in state["teams"]]
     vacants = [game.vacancies(t) for t in state["teams"]]
@@ -147,7 +147,8 @@ def reset(gid, state):
                               title=state.get("title", ""),
                               custom_target=bool(state.get("custom_target")),
                               targets=state.get("targets", [game.WIN_SCORE, game.WIN_SCORE]),
-                              no_question_limit=bool(state.get("no_question_limit")), vacants=vacants)
+                              no_question_limit=bool(state.get("no_question_limit")), vacants=vacants,
+                              emblems=game.emblems_of(state))
         conn.execute("INSERT INTO states (game_id, body) VALUES (?, ?)", (gid, json.dumps(body, ensure_ascii=False)))
 
 
@@ -598,6 +599,7 @@ class Action(BaseModel):
     team: int | None = None
     seat: int | None = None
     names: list[str] | None = None
+    emblems: list[str] | None = None
     title: str | None = None
     custom_target: bool | None = None
     targets: list[int] | None = None
@@ -641,6 +643,8 @@ def act(a: Action, gid: str = Depends(require_input)):
                 new = annotate_last(state, new)
                 push(gid, new)
                 touch_input(gid, new)
+            elif a.type == "emblems":
+                push(gid, game.set_emblems(state, a.emblems))
             elif a.type == "rename":
                 push(gid, game.rename(state, a.names or [], a.title))
             elif a.type == "targets":
@@ -690,7 +694,7 @@ def export_record(state, exported_at, gid=None):
         "question": state["question"],
         "result": None if res is None else {**res, "winner_name": None if res["winner"] is None else teams[res["winner"]]},
         "teams": [
-            {"name": t["name"], "score": t["score"], "product": game.product(raw), "target": t["target"],
+            {"name": t["name"], "emblem": t["emblem"], "score": t["score"], "product": game.product(raw), "target": t["target"],
              "seats": [{"seat": i + 1, "players": [n for n in s["players"] if n], "score": s["score"],
                         "cross": s["cross"], "locked": s["locked"], "reach": s["reach"], "vacant": s["vacant"]}
                        for i, s in enumerate(t["seats"])]}

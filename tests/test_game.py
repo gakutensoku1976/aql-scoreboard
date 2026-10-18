@@ -328,3 +328,29 @@ def test_last_judged_seat():
     st3 = game.wrong(st2, 1, 4)  # 封鎖になった枠も強調する
     v = game.view(st3)
     assert v["last"] == {"team": 1, "seat": 4, "kind": "wrong"} and v["teams"][1]["seats"][4]["locked"]
+
+
+def test_emblems_set_validate_and_view():
+    st = game.new_state()
+    assert [t["emblem"] for t in game.view(st)["teams"]] == ["", ""]
+    st = game.set_emblems(st, [" https://example.com/a/crest.PNG ", "https://cdn.example.org/x.svg?v=2"])
+    assert game.emblems_of(st) == ["https://example.com/a/crest.PNG", "https://cdn.example.org/x.svg?v=2"]
+    assert game.view(st)["teams"][1]["emblem"] == "https://cdn.example.org/x.svg?v=2"
+    for ext in ("jpg", "jpeg", "bmp"):
+        game.check_emblem(f"https://example.com/e.{ext}")
+    assert game.emblems_of(game.set_emblems(st, ["", "  "])) == ["", ""]  # 空欄で消す
+    for bad in ("http://example.com/a.png", "javascript:alert(1)//a.png", "https://example.com/a.gif",
+                "https:///a.png", "https://example.com/a b.png", "data:image/png;base64,AAAA",
+                "https://example.com/" + "a" * 2050 + ".png"):
+        with pytest.raises(game.RuleError):
+            game.check_emblem(bad)
+    with pytest.raises(game.RuleError):
+        game.set_emblems(st, ["https://example.com/a.png"])
+
+
+def test_view_handles_state_without_emblem():
+    st = game.new_state()
+    for t in st["teams"]:
+        del t["emblem"]
+    assert [t["emblem"] for t in game.view(st)["teams"]] == ["", ""]
+    assert game.emblems_of(st) == ["", ""]

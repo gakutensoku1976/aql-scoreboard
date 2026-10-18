@@ -651,3 +651,24 @@ def test_jleague_theme_selectable_and_fonts_served(client):
     for f in ("inter-latin-wght-normal.woff2", "inter-latin-wght-italic.woff2", "LICENSE.txt"):
         assert client.get(f"/static/vendor/inter/{f}").status_code == 200, f
     assert "Noto+Sans+JP" in client.get("/t1").text
+
+
+def test_emblems_action_reset_undo_export(client):
+    url = "https://example.com/crest.svg"
+    r = post(client, type="emblems", emblems=[url, ""])
+    assert r.status_code == 200 and r.json()["teams"][0]["emblem"] == url
+    assert client.get("/api/games/t1/state").json()["teams"][0]["emblem"] == url  # 閲覧画面にも出す
+    r = post(client, type="emblems", emblems=["javascript:alert(1)", ""])
+    assert r.status_code == 409 and "https" in r.json()["detail"]
+    post(client, type="correct", team=0, seat=0)
+    post(client, type="reset")  # リセットしても残る
+    assert client.get("/api/games/t1/state").json()["teams"][0]["emblem"] == url
+    assert client.get("/input/t1/api/export").json()["teams"][0]["emblem"] == url
+    post(client, type="emblems", emblems=["", "https://example.com/b.png"])
+    post(client, type="undo")  # 取り消しで戻る
+    assert [t["emblem"] for t in client.get("/api/games/t1/state").json()["teams"]] == [url, ""]
+
+
+def test_emblem_input_fields_present(client):
+    html = client.get("/input/t1").text
+    assert 'id="e0"' in html and 'id="e1"' in html and 'id="emblems"' in html
